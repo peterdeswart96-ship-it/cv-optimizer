@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const CLAUDE_API_KEY = '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'
+const CLAUDE_API_KEY = import.meta.env.VITE_CLAUDE_API_KEY
 
 function App() {
   const [cvTekst, setCvTekst] = useState('')
