@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const API_URL = 'https://func-cv-optimizer.azurewebsites.net/api/analyze'
+const CLAUDE_API_KEY = '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'
 
 function App() {
   const [cvTekst, setCvTekst] = useState('')
@@ -15,19 +15,75 @@ function App() {
     setAnalyse(null)
 
     try {
-      const response = await fetch(API_URL, {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cv_tekst: cvTekst, vacature_tekst: vacatureTekst })
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': CLAUDE_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-5',
+          max_tokens: 4096,
+          system: `Je bent een professionele loopbaancoach en recruitment specialist met 15 jaar ervaring.
+Je analyseert CV's en vacatures met als doel de kandidaat te helpen zijn/haar kansen te maximaliseren.
+Gedraag je als een eerlijke, constructieve coach — niet als een PR-bureau.
+Geef concrete, specifieke feedback gebaseerd op de daadwerkelijke inhoud.
+Detecteer automatisch de taal van het CV (NL of EN) en antwoord in dezelfde taal.
+Retourneer ALLEEN geldige JSON, geen markdown, geen inleiding, geen uitleg buiten de JSON.`,
+          messages: [{
+            role: 'user',
+            content: `Analyseer dit CV ten opzichte van deze vacature.
+
+CV:
+<cv_tekst>
+${cvTekst}
+</cv_tekst>
+
+Vacature:
+<vacature>
+${vacatureTekst}
+</vacature>
+
+Retourneer de volgende JSON-structuur:
+{
+  "taal": "nl",
+  "match_score": 75,
+  "match_toelichting": "2-3 zinnen waarom deze score",
+  "ontbrekende_keywords": ["keyword1", "keyword2"],
+  "aanwezige_keywords": ["keyword1", "keyword2"],
+  "tone_of_voice_vacature": "beschrijf de toon van het bedrijf in 2-3 zinnen",
+  "tone_of_voice_cv": "beschrijf de huidige toon van het CV in 2-3 zinnen",
+  "tone_aanbeveling": "concrete aanbeveling voor toon-aanpassing",
+  "secties": [
+    {
+      "naam": "sectienaam zoals gevonden in CV",
+      "volgorde": 1,
+      "originele_tekst": "volledige originele tekst van deze sectie"
+    }
+  ]
+}`
+          }]
+        })
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Er ging iets mis')
+        throw new Error(data.error?.message || 'Er ging iets mis met de API aanroep')
       }
 
-      setAnalyse(data)
+      const rawText = data.content[0].text
+      const cleanText = rawText
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/```\s*$/i, '')
+        .trim()
+
+      const analyseResultaat = JSON.parse(cleanText)
+      setAnalyse(analyseResultaat)
+
     } catch (err) {
       setFout(err.message)
     } finally {
@@ -35,7 +91,6 @@ function App() {
     }
   }
 
-  // Kleur bepalen op basis van match score
   const scoreKleur = (score) => {
     if (score >= 75) return 'text-green-600'
     if (score >= 50) return 'text-yellow-600'
@@ -130,7 +185,7 @@ function App() {
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-800 mb-4">Match Score</h2>
               <div className="flex items-center gap-6">
-                <div className={`w-24 h-24 rounded-full border-8 ${scoreRingKleur(analyse.match_score)} flex items-center justify-center`}>
+                <div className={`w-24 h-24 rounded-full border-8 ${scoreRingKleur(analyse.match_score)} flex items-center justify-center flex-shrink-0`}>
                   <span className={`text-2xl font-bold ${scoreKleur(analyse.match_score)}`}>
                     {analyse.match_score}%
                   </span>
@@ -189,7 +244,9 @@ function App() {
                 {analyse.secties.map((sectie, i) => (
                   <div key={i} className="border border-gray-100 rounded-lg p-4">
                     <p className="text-sm font-medium text-gray-700">{sectie.naam}</p>
-                    <p className="text-xs text-gray-400 mt-1 font-mono">{sectie.originele_tekst.substring(0, 100)}...</p>
+                    <p className="text-xs text-gray-400 mt-1 font-mono">
+                      {sectie.originele_tekst.substring(0, 100)}...
+                    </p>
                   </div>
                 ))}
               </div>
