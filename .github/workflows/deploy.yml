@@ -20,11 +20,12 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install & Build
+     - name: Install & Build
         env:
           VITE_CLAUDE_API_KEY: ${{ secrets.VITE_CLAUDE_API_KEY }}
         run: |
           cd frontend
+          echo "VITE_CLAUDE_API_KEY=$VITE_CLAUDE_API_KEY" > .env
           npm install
           npm run build
 
