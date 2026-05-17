@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import SectieReview from './SectieReview'
 import CVPreview from './CVPreview'
+import KeywordFeedback from './KeywordFeedback'
 
 const CLAUDE_API_KEY = import.meta.env.VITE_CLAUDE_API_KEY
 
@@ -251,7 +252,7 @@ Retourneer de volgende JSON-structuur:
               <h2 className="text-lg font-semibold text-gray-800 mb-2">Klaar om je CV te verbeteren?</h2>
               <p className="text-sm text-gray-600 mb-4">Ga sectie voor sectie door je CV en laat Claude concrete verbeteringsvoorstellen genereren.</p>
               <button
-                onClick={() => navigate('/sectie-review', { state: { analyse, cvTekst, vacatureTekst } })}
+                onClick={() => navigate('/keyword-feedback', { state: { analyse, cvTekst, vacatureTekst } })}
                 className="px-8 py-3 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
               >
                 Verbeter mijn CV per sectie →
@@ -270,6 +271,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Analyse />} />
+        <Route path="/keyword-feedback" element={<KeywordFeedback />} />
         <Route path="/sectie-review" element={<SectieReview />} />
         <Route path="/cv-preview" element={<CVPreview />} />
       </Routes>
