@@ -2,6 +2,9 @@ import { useState } from 'react'
 
 const CLAUDE_API_KEY = import.meta.env.VITE_CLAUDE_API_KEY
 
+const MAX_CV_TEKENS = 8000
+const MAX_VACATURE_TEKENS = 4000
+
 function App() {
   const [cvTekst, setCvTekst] = useState('')
   const [vacatureTekst, setVacatureTekst] = useState('')
@@ -10,6 +13,17 @@ function App() {
   const [fout, setFout] = useState(null)
 
   const analyseer = async () => {
+    // Validatie: tekst lengte controleren vóór API aanroep
+    if (cvTekst.length > MAX_CV_TEKENS) {
+      setFout(`Je CV is te lang (${cvTekst.length} tekens). Het maximum is ${MAX_CV_TEKENS} tekens. Verwijder overbodige tekst en probeer opnieuw.`)
+      return
+    }
+
+    if (vacatureTekst.length > MAX_VACATURE_TEKENS) {
+      setFout(`De vacaturetekst is te lang (${vacatureTekst.length} tekens). Het maximum is ${MAX_VACATURE_TEKENS} tekens. Plak alleen de relevante tekst.`)
+      return
+    }
+
     setLoading(true)
     setFout(null)
     setAnalyse(null)
@@ -85,7 +99,11 @@ Retourneer de volgende JSON-structuur:
       setAnalyse(analyseResultaat)
 
     } catch (err) {
-      setFout(err.message)
+      if (err instanceof SyntaxError) {
+        setFout('De analyse is mislukt omdat de tekst te lang is. Verkort je CV of vacature en probeer opnieuw.')
+      } else {
+        setFout(err.message)
+      }
     } finally {
       setLoading(false)
     }
@@ -126,6 +144,10 @@ Retourneer de volgende JSON-structuur:
                 value={cvTekst}
                 onChange={(e) => setCvTekst(e.target.value)}
               />
+              {/* Tekenteller CV */}
+              <p className={`text-xs mt-1 text-right ${cvTekst.length > MAX_CV_TEKENS ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
+                {cvTekst.length} / {MAX_CV_TEKENS} tekens
+              </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -137,6 +159,10 @@ Retourneer de volgende JSON-structuur:
                 value={vacatureTekst}
                 onChange={(e) => setVacatureTekst(e.target.value)}
               />
+              {/* Tekenteller vacature */}
+              <p className={`text-xs mt-1 text-right ${vacatureTekst.length > MAX_VACATURE_TEKENS ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
+                {vacatureTekst.length} / {MAX_VACATURE_TEKENS} tekens
+              </p>
             </div>
           </div>
         )}
@@ -146,7 +172,7 @@ Retourneer de volgende JSON-structuur:
           <div className="mt-6 flex justify-center">
             <button
               onClick={analyseer}
-              disabled={loading || !cvTekst || !vacatureTekst}
+              disabled={loading || !cvTekst || !vacatureTekst || cvTekst.length > MAX_CV_TEKENS || vacatureTekst.length > MAX_VACATURE_TEKENS}
               className="px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? 'Analyseren...' : 'Analyseer mijn CV'}
