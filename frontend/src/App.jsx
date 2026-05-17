@@ -39,7 +39,7 @@ function App() {
         },
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
-          max_tokens: 4096,
+          max_tokens: 8096,
           system: `Je bent een professionele loopbaancoach en recruitment specialist met 15 jaar ervaring.
 Je analyseert CV's en vacatures met als doel de kandidaat te helpen zijn/haar kansen te maximaliseren.
 Gedraag je als een eerlijke, constructieve coach — niet als een PR-bureau.
