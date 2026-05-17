@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import SectieReview from './SectieReview'
+import CVPreview from './CVPreview'
 
 const CLAUDE_API_KEY = import.meta.env.VITE_CLAUDE_API_KEY
 
@@ -270,6 +271,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Analyse />} />
         <Route path="/sectie-review" element={<SectieReview />} />
+        <Route path="/cv-preview" element={<CVPreview />} />
       </Routes>
     </BrowserRouter>
   )
