@@ -484,7 +484,8 @@ Retourneer ALLEEN geldige JSON:
                 <h3 className="text-base font-semibold text-gray-800 mb-3">Bewerkbare preview</h3>
                 <p className="text-xs text-gray-500 mb-2">Pas de tekst nog aan indien gewenst</p>
                 <textarea
-                  className="w-full h-40 p-3 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full p-3 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500"
+                  style={{ minHeight: `${Math.max(120, (aangepasteTekst.split('\n').length + 10) * 22)}px` }}
                   value={aangepasteTekst}
                   onChange={(e) => setAangepasteTekst(e.target.value)}
                 />
