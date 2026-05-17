@@ -6,7 +6,7 @@ const CLAUDE_API_KEY = import.meta.env.VITE_CLAUDE_API_KEY
 function SectieReview() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { analyse, cvTekst, vacatureTekst, keywordContext, geselecteerdeKeywords } = location.state || {}
+  const { analyse, cvTekst, vacatureTekst, keywordContext, geselecteerdeKeywords, keywordSecties } = location.state || {}
 
   const [huidigeSectieIndex, setHuidigeSectieIndex] = useState(0)
   const [sectieAnalyse, setSectieAnalyse] = useState(null)
@@ -305,16 +305,39 @@ Retourneer ALLEEN geldige JSON:
           </div>
         </div>
 
-        {/* Keyword context tip — als sectie relevant is */}
-        {keywordContext && geselecteerdeKeywords && geselecteerdeKeywords.some(k =>
-          huidigeSectie.originele_tekst.toLowerCase().includes(k.toLowerCase()) ||
-          huidigeSectie.naam.toLowerCase().includes(k.toLowerCase())
-        ) && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <p className="text-xs font-medium text-amber-700 uppercase mb-1">💡 Keyword context beschikbaar</p>
-            <p className="text-sm text-amber-800">Claude heeft extra context over ontbrekende keywords voor deze sectie.</p>
-          </div>
-        )}
+        {/* Keyword waarschuwing — toon welke keywords voor deze sectie zijn aangewezen */}
+        {keywordSecties && (() => {
+          const keywordsVoorDezeSectie = Object.entries(keywordSecties || {})
+            .filter(([keyword, secties]) => secties.includes(huidigeSectie.naam))
+            .map(([keyword]) => keyword)
+
+          if (keywordsVoorDezeSectie.length === 0) return null
+
+          return (
+            <div className="bg-amber-50 border border-amber-300 rounded-lg p-4">
+              <p className="text-sm font-semibold text-amber-800 mb-2">
+                ⚠️ Je hebt extra context opgegeven voor deze sectie
+              </p>
+              <p className="text-sm text-amber-700 mb-3">
+                De volgende keywords wil je toevoegen aan <strong>{huidigeSectie.naam}</strong>. Claude verwerkt deze in één keer bij de analyse:
+              </p>
+              <ul className="space-y-1 mb-3">
+                {keywordsVoorDezeSectie.map((keyword, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-amber-800">
+                    <span className="text-amber-500 flex-shrink-0 mt-0.5">→</span>
+                    <span><strong>{keyword}</strong>{keywordContext && keywordContext.includes(keyword + ':')
+                      ? ': ' + keywordContext.split(keyword + ':')[1]?.split('\n')[0]?.replace(/ Voeg dit ALLEEN.*$/, '').trim()
+                      : ''
+                    }</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-amber-600">
+                💡 Tip: klik op "Analyseer deze sectie" om alles in één keer te verwerken
+              </p>
+            </div>
+          )
+        })()}
 
         {/* Analyseer + overslaan knoppen */}
         {!sectieAnalyse && !loading && (
