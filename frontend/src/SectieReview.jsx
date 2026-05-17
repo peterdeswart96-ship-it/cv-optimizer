@@ -250,7 +250,7 @@ Retourneer ALLEEN geldige JSON:
                 state: {
                   secties,
                   definitieveTeksten,
-                  naam: secties[0]?.originele_tekst?.split('\n')[0] || 'Mijn CV'
+                  cvTekst
                 }
               })}
               className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
