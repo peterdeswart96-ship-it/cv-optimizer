@@ -6,7 +6,7 @@ const CLAUDE_API_KEY = import.meta.env.VITE_CLAUDE_API_KEY
 function SectieReview() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { analyse, cvTekst, vacatureTekst } = location.state || {}
+  const { analyse, cvTekst, vacatureTekst, keywordContext, geselecteerdeKeywords } = location.state || {}
 
   const [huidigeSectieIndex, setHuidigeSectieIndex] = useState(0)
   const [sectieAnalyse, setSectieAnalyse] = useState(null)
@@ -81,6 +81,7 @@ ${vacatureTekst}
 
 Eerder vastgestelde ontbrekende keywords: ${analyse.ontbrekende_keywords.join(', ')}
 Tone-of-voice aanbeveling: ${analyse.tone_aanbeveling}
+${keywordContext ? `\nExtra context van de gebruiker over ontbrekende keywords:\n${keywordContext}\n\nGebruik deze context om gerichte suggesties te geven als deze sectie relevant is voor de genoemde keywords.` : ''}
 
 Retourneer ALLEEN geldige JSON:
 {
@@ -304,16 +305,32 @@ Retourneer ALLEEN geldige JSON:
           </div>
         </div>
 
-        {/* Analyseer knop */}
+        {/* Keyword context tip — als sectie relevant is */}
+        {keywordContext && geselecteerdeKeywords && geselecteerdeKeywords.some(k =>
+          huidigeSectie.originele_tekst.toLowerCase().includes(k.toLowerCase()) ||
+          huidigeSectie.naam.toLowerCase().includes(k.toLowerCase())
+        ) && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <p className="text-xs font-medium text-amber-700 uppercase mb-1">💡 Keyword context beschikbaar</p>
+            <p className="text-sm text-amber-800">Claude heeft extra context over ontbrekende keywords voor deze sectie.</p>
+          </div>
+        )}
+
+        {/* Analyseer + overslaan knoppen */}
         {!sectieAnalyse && !loading && (
-          <div className="text-center">
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => slaOpEnVerder(huidigeSectie.originele_tekst)}
+              className="px-6 py-3 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+            >
+              Sla sectie over →
+            </button>
             <button
               onClick={analyseerSectie}
               className="px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
             >
               Analyseer deze sectie
             </button>
-            <p className="text-xs text-gray-400 mt-2">Claude analyseert de sectie en geeft verbeteringsvoorstellen</p>
           </div>
         )}
 
