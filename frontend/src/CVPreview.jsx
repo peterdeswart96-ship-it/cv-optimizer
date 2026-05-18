@@ -1,7 +1,6 @@
 import { useState, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-// Verwijder markdown opmaak
 function stripMarkdown(tekst) {
   if (!tekst) return ''
   return tekst
@@ -11,26 +10,15 @@ function stripMarkdown(tekst) {
     .trim()
 }
 
-// Vervang em dashes en lange streepjes door bulletpoints
 function vervangDashes(tekst) {
   if (!tekst) return ''
   return tekst
-    .replace(/^[\s]*[–—-]+\s+/gm, '• ')
-    .replace(/\n[\s]*[–—-]+\s+/g, '\n• ')
+    .replace(/^[\s]*[–—]+\s*/gm, '• ')
+    .replace(/\n[\s]*[–—]+\s*/g, '\n• ')
 }
 
 function verwerkTekst(tekst) {
   return vervangDashes(stripMarkdown(tekst))
-}
-
-// Bepaal of een sectie in de linker of rechter kolom hoort
-function bepaalKolom(sectieNaam) {
-  const naam = sectieNaam.toUpperCase()
-  // Rechterkolom: certificeringen, tools, opleiding
-  if (naam.includes('CERTIF') || naam.includes('TOOLS') || naam.includes('TECHNOLOG') || naam.includes('OPLEID')) {
-    return 'rechts'
-  }
-  return 'links'
 }
 
 function CVPreview() {
@@ -60,7 +48,6 @@ function CVPreview() {
     return verwerkTekst(tekst)
   }
 
-  // Parse header uit cvTekst
   const parseHeader = () => {
     if (!cvTekst) return null
     const regels = cvTekst.split('\n')
@@ -76,19 +63,21 @@ function CVPreview() {
 
   const headerRegels = parseHeader()
 
-  // Splits secties in linker en rechter kolom
-  const linksSects = secties.filter(s => bepaalKolom(s.naam) === 'links')
-  const rechtsSects = secties.filter(s => bepaalKolom(s.naam) === 'rechts')
-
   const downloadPDF = async () => {
     const html2pdf = (await import('html2pdf.js')).default
     const element = cvRef.current
     const opt = {
-      margin: [8, 8, 8, 8],
+      margin: [10, 10, 10, 10],
       filename: 'cv-verbeterd.pdf',
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        letterRendering: true,
+        scrollY: 0
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: 'avoid-all' }
     }
     html2pdf().set(opt).from(element).save()
   }
@@ -99,13 +88,16 @@ function CVPreview() {
 
     if (headerRegels) {
       if (headerRegels[0]) children.push(new Paragraph({
-        children: [new TextRun({ text: headerRegels[0], bold: true, size: 30, color: 'FFFFFF' })],
-        alignment: AlignmentType.LEFT, spacing: { after: 60 },
-        shading: { fill: '1a3a5c' }
+        children: [new TextRun({ text: headerRegels[0], bold: true, size: 30, color: '1a3a5c' })],
+        alignment: AlignmentType.LEFT, spacing: { after: 60 }
       }))
-      for (let i = 1; i < headerRegels.length; i++) {
+      if (headerRegels[1]) children.push(new Paragraph({
+        children: [new TextRun({ text: headerRegels[1], size: 22, color: '4a5568' })],
+        spacing: { after: 60 }
+      }))
+      for (let i = 2; i < headerRegels.length; i++) {
         children.push(new Paragraph({
-          children: [new TextRun({ text: headerRegels[i], size: 18, color: 'CCDDEE' })],
+          children: [new TextRun({ text: headerRegels[i], size: 18, color: '718096' })],
           spacing: { after: 30 }
         }))
       }
@@ -115,14 +107,14 @@ function CVPreview() {
     for (const sectie of secties) {
       const tekst = getTekst(sectie)
       children.push(new Paragraph({
-        children: [new TextRun({ text: sectie.naam.toUpperCase(), bold: true, size: 22, color: '1a3a5c' })],
-        spacing: { before: 300, after: 100 },
+        children: [new TextRun({ text: sectie.naam.toUpperCase(), bold: true, size: 20, color: '1a3a5c' })],
+        spacing: { before: 300, after: 80 },
         border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '1a3a5c' } }
       }))
       for (const regel of tekst.split('\n').filter(r => r.trim())) {
         const isBullet = regel.trim().startsWith('•')
         children.push(new Paragraph({
-          children: [new TextRun({ text: regel.trim(), size: 19, color: '2d3748' })],
+          children: [new TextRun({ text: stripMarkdown(regel.trim()), size: 19, color: '2d3748' })],
           indent: isBullet ? { left: 200 } : {},
           spacing: { after: 60 }
         }))
@@ -149,45 +141,14 @@ function CVPreview() {
     setBewerkenIndex(null)
   }
 
-  // Render één sectie
-  const renderSectie = (sectie, i) => {
-    const tekst = getTekst(sectie)
-    const regels = tekst.split('\n').filter(r => r.trim())
-
-    return (
-      <div key={i} style={{ marginBottom: '12px' }}>
-        <div style={{ marginBottom: '4px' }}>
-          <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#1a3a5c', letterSpacing: '0.8px', textTransform: 'uppercase', borderBottom: '1px solid #1a3a5c', paddingBottom: '2px', display: 'inline-block', width: '100%' }}>
-            {sectie.naam}
-          </span>
-        </div>
-        <div style={{ fontSize: '8.5px', color: '#2d3748', lineHeight: '1.5' }}>
-          {regels.map((regel, j) => {
-            const isBullet = regel.trim().startsWith('•')
-            const isVetRegel = regel.match(/^[A-Z][^•\n]{0,60}(–|-–|–\s)/) && !isBullet
-            return (
-              <div key={j} style={{
-                marginBottom: isBullet ? '2px' : '3px',
-                paddingLeft: isBullet ? '10px' : '0',
-                fontWeight: (regel.includes('Expert') || regel.includes('Engineer') || regel.includes('Specialist') || regel.includes('Engineer')) && j === 0 ? 'bold' : 'normal'
-              }}>
-                {regel.trim()}
-              </div>
-            )
-          })}
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-gray-300">
+    <div className="min-h-screen bg-gray-200">
       {/* Toolbar */}
       <div className="bg-white border-b border-gray-200 px-6 py-3 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-lg font-bold text-gray-900">CV Preview</h1>
-            <p className="text-xs text-gray-500">Twee-kolommen layout • Gebruik bewerken knoppen hieronder voor aanpassingen</p>
+            <p className="text-xs text-gray-500">Gebruik de bewerken knoppen hieronder voor aanpassingen</p>
           </div>
           <div className="flex gap-2">
             <button onClick={() => navigate(-1)} className="px-3 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50">← Terug</button>
@@ -197,7 +158,7 @@ function CVPreview() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-3xl mx-auto px-4 py-8">
 
         {/* Bewerken panel — buiten cvRef */}
         {bewerkenIndex !== null && (
@@ -208,7 +169,8 @@ function CVPreview() {
             <textarea
               value={bewerkWaarden[bewerkenIndex] ?? ''}
               onChange={(e) => setBewerkWaarden(prev => ({ ...prev, [bewerkenIndex]: e.target.value }))}
-              className="w-full h-40 p-3 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="w-full p-3 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400"
+              style={{ minHeight: `${Math.max(120, ((bewerkWaarden[bewerkenIndex] ?? '').split('\n').length + 10) * 22)}px` }}
             />
             <div className="flex gap-3 mt-2">
               <button onClick={() => slaOp(secties[bewerkenIndex].naam, bewerkenIndex)} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Opslaan</button>
@@ -223,38 +185,57 @@ function CVPreview() {
 
             {/* Header — donkerblauw vlak */}
             {headerRegels && (
-              <div style={{ backgroundColor: '#1a3a5c', padding: '14px 16px 12px 16px', color: 'white' }}>
+              <div style={{ backgroundColor: '#1a3a5c', padding: '16px 20px 14px 20px', color: 'white' }}>
                 {headerRegels[0] && (
-                  <div style={{ fontSize: '18px', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '3px', textTransform: 'uppercase' }}>
+                  <div style={{ fontSize: '20px', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '3px', textTransform: 'uppercase' }}>
                     {headerRegels[0]}
                   </div>
                 )}
                 {headerRegels[1] && (
-                  <div style={{ fontSize: '10px', color: '#a8c4e0', marginBottom: '4px' }}>
+                  <div style={{ fontSize: '11px', color: '#a8c4e0', marginBottom: '5px' }}>
                     {headerRegels[1]}
                   </div>
                 )}
                 {headerRegels.slice(2).map((regel, i) => (
-                  <div key={i} style={{ fontSize: '8.5px', color: '#7aaed0', marginBottom: '1px' }}>
+                  <div key={i} style={{ fontSize: '9px', color: '#7aaed0', marginBottom: '1px' }}>
                     {regel}
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Twee kolommen */}
-            <div style={{ display: 'flex', gap: '0', padding: '0' }}>
+            {/* Alle secties onder elkaar */}
+            <div style={{ padding: '16px 20px' }}>
+              {secties.map((sectie, i) => {
+                const tekst = getTekst(sectie)
+                const regels = tekst.split('\n').filter(r => r.trim())
 
-              {/* Linker kolom — 55% */}
-              <div style={{ flex: '0 0 55%', padding: '14px 12px 14px 16px', borderRight: '1px solid #e2e8f0' }}>
-                {linksSects.map((sectie, i) => renderSectie(sectie, secties.indexOf(sectie)))}
-              </div>
+                return (
+                  <div key={i} style={{ marginBottom: '14px' }}>
+                    {/* Sectie titel */}
+                    <div style={{ borderBottom: '1.5px solid #1a3a5c', marginBottom: '6px', paddingBottom: '2px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#1a3a5c', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
+                        {sectie.naam}
+                      </span>
+                    </div>
 
-              {/* Rechter kolom — 45% */}
-              <div style={{ flex: '0 0 45%', padding: '14px 16px 14px 12px' }}>
-                {rechtsSects.map((sectie, i) => renderSectie(sectie, secties.indexOf(sectie)))}
-              </div>
-
+                    {/* Sectie tekst */}
+                    <div style={{ fontSize: '9.5px', lineHeight: '1.6', color: '#2d3748' }}>
+                      {regels.map((regel, j) => {
+                        const isBullet = regel.trim().startsWith('•')
+                        return (
+                          <div key={j} style={{
+                            marginBottom: isBullet ? '2px' : '3px',
+                            paddingLeft: isBullet ? '12px' : '0',
+                          }}>
+                            {stripMarkdown(regel.trim())}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
