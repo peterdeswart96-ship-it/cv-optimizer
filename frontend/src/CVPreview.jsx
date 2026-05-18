@@ -1,69 +1,267 @@
-PETER DE SWART
-IT Engineer Expert | Microsoft 365 & Security Specialist
-Beverwijk | 06-21141583 | sollicitatiepeterdeswart@gmail.com
-linkedin.com/in/peter-de-swart-24755a156 | Microsoft Transcript (17 actieve certificaten)
+import { useState, useRef } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import html2pdf from 'html2pdf.js'
+import { Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle } from 'docx'
 
-PROFIEL
-Enthousiaste, leergierige IT-professional met ruim 20 jaar ervaring, waarvan de laatste zeven jaar gericht op Microsoft 365, security en Azure. Sterk in het beveiligen, optimaliseren en automatiseren van cloudplatforms, met een scherp oog voor documentatie en kennisdeling. Gecertificeerd op Expert- en Associate-niveau (Azure, Security, Identity, M365) en actief bezig met AI-tooling, Copilot Studio en het breder inzetbaar worden als ingenieur die de brug slaat tussen beheer en development.
+function stripMarkdown(tekst) {
+  if (!tekst) return ''
+  return tekst
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .trim()
+}
 
-KERNCOMPETENTIES
-Microsoft 365 & Azure beheer | Security & Compliance | Identity & Access Management
-Intune & Endpoint Management | PowerShell-automatisering | AI Agents & Copilot Studio
-Cloud migraties & onboarding | Documentatie & kennisdeling | 3e-lijns incidentoplossing
+function vervangDashes(tekst) {
+  if (!tekst) return ''
+  return tekst
+    .replace(/^[\s]*[–—]+\s*/gm, '• ')
+    .replace(/\n[\s]*[–—]+\s*/g, '\n• ')
+}
 
-WERKERVARING
+function verwerkTekst(tekst) {
+  return vervangDashes(stripMarkdown(tekst))
+}
 
-IT Engineer Expert – NS via Black Tang | Mrt 2025 – Apr 2026
-M365 Core Team, Centrale Platform Organisatie (CPO)
-– Triage van Microsoft Message Center-meldingen; communicatie naar team en gebruikers
-– Gebouwd: Copilot-agent die automatisch helpt bij analyse en triage van meldingen
-– Verbetering Microsoft Secure Score: aanmaken taken in Azure Boards, opstellen security policies
-– Behandeling 3e-lijns tickets en complexe serviceaanvragen
-– Collega's ondersteund bij bouwen van eigen Copilot-agents
-– Meerdere custom AI-agents ontwikkeld voor automatisering van terugkerende taken
+function CVPreview() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { secties, definitieveTeksten, cvTekst } = location.state || {}
+  const cvRef = useRef(null)
+  const [bewerkenIndex, setBewerkenIndex] = useState(null)
+  const [bewerkTeksten, setBewerkTeksten] = useState({})
+  const [bewerkWaarden, setBewerkWaarden] = useState({})
 
-Cloud Lifecycle Engineer – Constant IT | Nov 2023 – Jan 2026
-– Beheer en optimalisatie van M365 en Azure voor klanten tot 300 fte
-– Automatisering van beheertaken met PowerShell-scripts
-– Conditional Access, guest access en Azure Enterprise Apps & IAM beheer
-– App packaging via PowerShell, distributie via Intune met dynamische security groups
-– Security & ISO 27001: opvolging auditbevindingen, policies aanpassen
-– Onboarding nieuwe klanten: tenant-configuratie, gebruikers, devices en apps
-– 6 SharePoint AI Agents geconfigureerd voor klant Goed Geschud
-– Kennisdeling: trainingen over app packaging, PIM, Conditional Access en AI Agents
+  if (!secties) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Geen CV data gevonden.</p>
+          <button onClick={() => navigate('/')} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            ← Terug naar analyse
+          </button>
+        </div>
+      </div>
+    )
+  }
 
-M365 Cloud Support Engineer – Axians | Jun 2022 – Sep 2023
-– 2e-lijns cloud incidenten voor diverse klanten (o.a. gemeentes, Frans Lyceum, Crematorium Westerveld)
-– Intune en Autopilot ingericht; cloudmigratie begeleid
+  const getTekst = (sectie) => {
+    const tekst = bewerkTeksten[sectie.naam] ?? definitieveTeksten[sectie.naam] ?? sectie.originele_tekst
+    return verwerkTekst(tekst)
+  }
 
-Senior Service Engineer – Experis PEAK-IT | Sep 2019 – Jun 2022
-Opdrachten bij PVH en KLM: 2e-lijns cloud support, Intune device beheer, OS-upgrades, PowerShell rapportages
+  const parseHeader = () => {
+    if (!cvTekst) return null
+    const regels = cvTekst.split('\n')
+    const headerRegels = []
+    for (const regel of regels) {
+      const r = regel.trim()
+      if (!r) continue
+      if (secties.some(s => r.toUpperCase() === s.naam.toUpperCase())) break
+      headerRegels.push(r)
+    }
+    return headerRegels.length > 0 ? headerRegels : null
+  }
 
-Service Engineer – DSE IT-Services | Sep 2011 – Sep 2019
-1e/2e-lijns support, Active Directory, Office 365, back-upbeheer, netwerkmonitoring
+  const headerRegels = parseHeader()
 
-Eerdere functies: Gemeente Beverwijk (2011) | DigiNotar B.V. (2010–2011, PKI/SSL-certificaatbeheer)
+  const downloadPDF = async () => {
+    const element = cvRef.current
+    const opt = {
+      margin: [10, 10, 10, 10],
+      filename: 'cv-verbeterd.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        letterRendering: true,
+        scrollY: 0
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: 'avoid-all' }
+    }
+    html2pdf().set(opt).from(element).save()
+  }
 
-CERTIFICERINGEN
+  const downloadDOCX = async () => {
+    const children = []
 
-Microsoft Certified (17 actief), o.a.:
-SC-401 Information Security Administrator Expert | SC-300 Identity & Access Administrator
-AZ-305 Azure Solutions Architect Expert | AZ-104 Azure Administrator
-AZ-500 Azure Security Engineer | SC-200 Security Operations Analyst
-MD-102 Endpoint Administrator | MS-100/101 M365 Administrator Expert
-AZ-140 Azure Virtual Desktop | AB-900 Copilot & Agent Administration
+    if (headerRegels) {
+      if (headerRegels[0]) children.push(new Paragraph({
+        children: [new TextRun({ text: headerRegels[0], bold: true, size: 30, color: '1a3a5c' })],
+        alignment: AlignmentType.LEFT, spacing: { after: 60 }
+      }))
+      if (headerRegels[1]) children.push(new Paragraph({
+        children: [new TextRun({ text: headerRegels[1], size: 22, color: '4a5568' })],
+        spacing: { after: 60 }
+      }))
+      for (let i = 2; i < headerRegels.length; i++) {
+        children.push(new Paragraph({
+          children: [new TextRun({ text: headerRegels[i], size: 18, color: '718096' })],
+          spacing: { after: 30 }
+        }))
+      }
+      children.push(new Paragraph({ spacing: { after: 200 } }))
+    }
 
-Applied Skills (6): Microsoft Purview, Entra ID, Copilot Studio, Azure Networking, Azure Storage
+    for (const sectie of secties) {
+      const tekst = getTekst(sectie)
+      children.push(new Paragraph({
+        children: [new TextRun({ text: sectie.naam.toUpperCase(), bold: true, size: 20, color: '1a3a5c' })],
+        spacing: { before: 300, after: 80 },
+        border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '1a3a5c' } }
+      }))
+      for (const regel of tekst.split('\n').filter(r => r.trim())) {
+        const isBullet = regel.trim().startsWith('•')
+        children.push(new Paragraph({
+          children: [new TextRun({ text: stripMarkdown(regel.trim()), size: 19, color: '2d3748' })],
+          indent: isBullet ? { left: 200 } : {},
+          spacing: { after: 60 }
+        }))
+      }
+    }
 
-TOOLS & TECHNOLOGIEËN
+    const doc = new Document({ sections: [{ properties: {}, children }] })
+    const blob = await Packer.toBlob(doc)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'cv-verbeterd.docx'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
-M365: Admin Center, Exchange Online, SharePoint, Teams, Purview, Defender XDR
-Azure: Portal, VMs, AVD, Networking, Monitor, Key Vault, AD Connect, Storage
-Identity: Entra ID, Conditional Access, PIM, MFA, SSO, Sentinel, Defender suite
-Devices: Intune, Autopilot, Win32/MSI packaging, Apple Business Manager, Android Enterprise
-AI: Copilot Studio, SharePoint AI Agents, Claude AI, Microsoft Copilot for M365
-Scripting: PowerShell, Azure Automation
-ITSM: TopDesk, ServiceNow, Autotask, Jira, Freshservice, ITGlue
+  const startBewerken = (i, tekst) => {
+    setBewerkenIndex(i)
+    setBewerkWaarden(prev => ({ ...prev, [i]: tekst }))
+  }
 
-OPLEIDING
-MBO ICT Beheer niveau 3 | Nova College Beverwijk | 2000–2002
+  const slaOp = (sectieNaam, i) => {
+    setBewerkTeksten(prev => ({ ...prev, [sectieNaam]: bewerkWaarden[i] }))
+    setBewerkenIndex(null)
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-200">
+      {/* Toolbar */}
+      <div className="bg-white border-b border-gray-200 px-6 py-3 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-bold text-gray-900">CV Preview</h1>
+            <p className="text-xs text-gray-500">Gebruik de bewerken knoppen hieronder voor aanpassingen</p>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => navigate(-1)} className="px-3 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50">← Terug</button>
+            <button onClick={downloadDOCX} className="px-4 py-2 border border-blue-300 text-blue-700 text-sm rounded-lg hover:bg-blue-50">↓ Word (.docx)</button>
+            <button onClick={downloadPDF} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">↓ PDF downloaden</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-3xl mx-auto px-4 py-8">
+
+        {/* Bewerken panel — buiten cvRef */}
+        {bewerkenIndex !== null && (
+          <div className="bg-white border border-blue-300 rounded-xl p-4 mb-4 shadow">
+            <p className="text-sm font-medium text-gray-700 mb-2">
+              ✏️ Bewerken: <strong>{secties[bewerkenIndex]?.naam}</strong>
+            </p>
+            <textarea
+              value={bewerkWaarden[bewerkenIndex] ?? ''}
+              onChange={(e) => setBewerkWaarden(prev => ({ ...prev, [bewerkenIndex]: e.target.value }))}
+              className="w-full p-3 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400"
+              style={{ minHeight: `${Math.max(120, ((bewerkWaarden[bewerkenIndex] ?? '').split('\n').length + 10) * 22)}px` }}
+            />
+            <div className="flex gap-3 mt-2">
+              <button onClick={() => slaOp(secties[bewerkenIndex].naam, bewerkenIndex)} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Opslaan</button>
+              <button onClick={() => setBewerkenIndex(null)} className="px-4 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50">Annuleren</button>
+            </div>
+          </div>
+        )}
+
+        {/* CV Document — alleen dit naar PDF */}
+        <div className="bg-white shadow-xl">
+          <div ref={cvRef} style={{ fontFamily: "'Arial', 'Helvetica', sans-serif", color: '#2d3748' }}>
+
+            {/* Header — donkerblauw vlak */}
+            {headerRegels && (
+              <div style={{ backgroundColor: '#1a3a5c', padding: '16px 20px 14px 20px', color: 'white' }}>
+                {headerRegels[0] && (
+                  <div style={{ fontSize: '20px', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '3px', textTransform: 'uppercase' }}>
+                    {headerRegels[0]}
+                  </div>
+                )}
+                {headerRegels[1] && (
+                  <div style={{ fontSize: '11px', color: '#a8c4e0', marginBottom: '5px' }}>
+                    {headerRegels[1]}
+                  </div>
+                )}
+                {headerRegels.slice(2).map((regel, i) => (
+                  <div key={i} style={{ fontSize: '9px', color: '#7aaed0', marginBottom: '1px' }}>
+                    {regel}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Alle secties onder elkaar */}
+            <div style={{ padding: '16px 20px' }}>
+              {secties.map((sectie, i) => {
+                const tekst = getTekst(sectie)
+                const regels = tekst.split('\n').filter(r => r.trim())
+
+                return (
+                  <div key={i} style={{ marginBottom: '14px' }}>
+                    {/* Sectie titel */}
+                    <div style={{ borderBottom: '1.5px solid #1a3a5c', marginBottom: '6px', paddingBottom: '2px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#1a3a5c', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
+                        {sectie.naam}
+                      </span>
+                    </div>
+
+                    {/* Sectie tekst */}
+                    <div style={{ fontSize: '9.5px', lineHeight: '1.6', color: '#2d3748' }}>
+                      {regels.map((regel, j) => {
+                        const isBullet = regel.trim().startsWith('•')
+                        return (
+                          <div key={j} style={{
+                            marginBottom: isBullet ? '2px' : '3px',
+                            paddingLeft: isBullet ? '12px' : '0',
+                          }}>
+                            {stripMarkdown(regel.trim())}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Bewerken knoppen — buiten cvRef */}
+        <div className="mt-4 bg-white rounded-xl border border-gray-200 p-4">
+          <p className="text-xs font-medium text-gray-500 mb-3">Sectie bewerken (niet zichtbaar in PDF/Word)</p>
+          <div className="flex flex-wrap gap-2">
+            {secties.map((sectie, i) => (
+              <button
+                key={i}
+                onClick={() => startBewerken(i, getTekst(sectie))}
+                className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${bewerkenIndex === i ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'}`}
+              >
+                ✏️ {sectie.naam}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <p className="text-center text-xs text-gray-400 mt-3">
+          Bewerken knoppen zijn niet zichtbaar in de PDF of Word download
+        </p>
+      </div>
+    </div>
+  )
+}
+
+export default CVPreview
