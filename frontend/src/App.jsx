@@ -4,7 +4,7 @@ import SectieReview from './SectieReview'
 import CVPreview from './CVPreview'
 import KeywordFeedback from './KeywordFeedback'
 
-const BACKEND = 'https://func-cv-optimizer.azurewebsites.net/api'
+const BACKEND = 'https://func-cv-optimizer-linux.azurewebsites.net/api'
 
 const MAX_CV_TEKENS = 8000
 const MAX_VACATURE_TEKENS = 4000
