@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-const BACKEND = 'https://func-cv-optimizer.azurewebsites.net/api'
+const BACKEND = 'https://func-cv-optimizer-linux.azurewebsites.net/api'
 
 function SectieReview() {
   const location = useLocation()
