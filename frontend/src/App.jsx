@@ -4,7 +4,7 @@ import SectieReview from './SectieReview'
 import CVPreview from './CVPreview'
 import KeywordFeedback from './KeywordFeedback'
 
-const CLAUDE_API_KEY = import.meta.env.VITE_CLAUDE_API_KEY
+const BACKEND = 'https://func-cv-optimizer.azurewebsites.net/api'
 
 const MAX_CV_TEKENS = 8000
 const MAX_VACATURE_TEKENS = 4000
@@ -32,65 +32,19 @@ function Analyse() {
     setAnalyse(null)
 
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch(`${BACKEND}/analyze`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': CLAUDE_API_KEY,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 8096,
-          system: `Je bent een professionele loopbaancoach en recruitment specialist met 15 jaar ervaring.
-Je analyseert CV's en vacatures met als doel de kandidaat te helpen zijn/haar kansen te maximaliseren.
-Gedraag je als een eerlijke, constructieve coach — niet als een PR-bureau.
-Geef concrete, specifieke feedback gebaseerd op de daadwerkelijke inhoud.
-Detecteer automatisch de taal van het CV (NL of EN) en antwoord in dezelfde taal.
-Retourneer ALLEEN geldige JSON, geen markdown, geen inleiding, geen uitleg buiten de JSON.`,
-          messages: [{
-            role: 'user',
-            content: `Analyseer dit CV ten opzichte van deze vacature.
-
-CV:
-<cv_tekst>
-${cvTekst}
-</cv_tekst>
-
-Vacature:
-<vacature>
-${vacatureTekst}
-</vacature>
-
-Retourneer de volgende JSON-structuur:
-{
-  "taal": "nl",
-  "match_score": 75,
-  "match_toelichting": "2-3 zinnen waarom deze score",
-  "ontbrekende_keywords": ["keyword1", "keyword2"],
-  "aanwezige_keywords": ["keyword1", "keyword2"],
-  "tone_of_voice_vacature": "beschrijf de toon van het bedrijf in 2-3 zinnen",
-  "tone_of_voice_cv": "beschrijf de huidige toon van het CV in 2-3 zinnen",
-  "tone_aanbeveling": "concrete aanbeveling voor toon-aanpassing",
-  "secties": [
-    {
-      "naam": "sectienaam zoals gevonden in CV",
-      "volgorde": 1,
-      "originele_tekst": "volledige originele tekst van deze sectie"
-    }
-  ]
-}`
-          }]
+          cv_tekst: cvTekst,
+          vacature_tekst: vacatureTekst
         })
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error?.message || 'Er ging iets mis')
+      if (!response.ok) throw new Error(data.error || 'Er ging iets mis')
 
-      const rawText = data.content[0].text
-      const cleanText = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
-      setAnalyse(JSON.parse(cleanText))
+      setAnalyse(data)
 
     } catch (err) {
       if (err instanceof SyntaxError) {
