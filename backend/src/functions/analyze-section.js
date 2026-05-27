@@ -36,7 +36,15 @@ app.http('analyze-section', {
 
     try {
       const body = await request.json();
-      const { sectie_naam, sectie_inhoud, vacature_tekst } = body;
+      const {
+        sectie_naam,
+        sectie_inhoud,
+        vacature_tekst,
+        ontbrekende_keywords,
+        tone_aanbeveling,
+        keyword_context,
+        eigen_instructie
+      } = body;
 
       if (!sectie_naam || !sectie_inhoud || !vacature_tekst) {
         return {
@@ -48,13 +56,66 @@ app.http('analyze-section', {
 
       context.log('Analyze-section gestart voor:', sectie_naam);
 
+      let prompt;
+
+      // Eigen instructie modus — gebruiker geeft zelf aan wat hij wil
+      if (eigen_instructie) {
+        prompt = `Je bent een professionele loopbaancoach. De gebruiker wil sectie "${sectie_naam}" aanpassen met de volgende instructie:
+
+<instructie>
+${eigen_instructie}
+</instructie>
+
+Originele sectietekst:
+<sectie>
+${sectie_inhoud}
+</sectie>
+
+Herschrijf de sectie exact volgens de instructie van de gebruiker.
+Behoud de originele feiten — verzin niets bij.
+Geef ALLEEN geldige JSON terug:
+{"score":"-","relevantie":"Aangepast op basis van eigen instructie","sterkePunten":[],"verbeterpunten":[],"herschreven":"<de herschreven sectietekst>"}`;
+
+      } else {
+        // Standaard analyse modus
+        const keywordsStr = ontbrekende_keywords?.length
+          ? `\nOntbrekende keywords om te verwerken: ${ontbrekende_keywords.join(', ')}`
+          : '';
+        const toneStr = tone_aanbeveling
+          ? `\nTone-of-voice aanbeveling: ${tone_aanbeveling}`
+          : '';
+        const contextStr = keyword_context
+          ? `\nExtra context van de gebruiker:\n${keyword_context}`
+          : '';
+
+        prompt = `Je bent een professionele loopbaancoach en recruitment specialist met 15 jaar ervaring.
+Analyseer sectie "${sectie_naam}" van dit CV ten opzichte van de vacature.
+
+Sectietekst:
+<sectie>
+${sectie_inhoud}
+</sectie>
+
+Vacature:
+<vacature>
+${vacature_tekst.substring(0, 2000)}
+</vacature>
+${keywordsStr}${toneStr}${contextStr}
+
+Geef ALLEEN geldige JSON terug:
+{
+  "score": <1-10>,
+  "relevantie": "<1 zin: hoe relevant is deze sectie voor de vacature>",
+  "sterkePunten": ["<punt>", "<punt>"],
+  "verbeterpunten": ["<punt>", "<punt>"],
+  "herschreven": "<verbeterde versie van de sectie, volledig uitgeschreven, gebruik apostrofs ipv aanhalingstekens in de tekst>"
+}`;
+      }
+
       const response = await anthropic.messages.create({
         model: 'claude-sonnet-4-5',
         max_tokens: 2000,
-        messages: [{
-          role: 'user',
-          content: `CV-coach. Analyseer sectie "${sectie_naam}" vs. vacature.\n\nSECTIE:\n${sectie_inhoud}\n\nVACATURE:\n${vacature_tekst.substring(0, 2000)}\n\nGeef ALLEEN geldige JSON:\n{"score":<1-10>,"relevantie":"<1 zin>","sterkePunten":["<punt>"],"verbeterpunten":["<punt>"],"herschreven":"<verbeterde versie, gebruik apostrofs ipv aanhalingstekens in de tekst>"}`
-        }]
+        messages: [{ role: 'user', content: prompt }]
       });
 
       const result = safeParse(response.content[0].text);
