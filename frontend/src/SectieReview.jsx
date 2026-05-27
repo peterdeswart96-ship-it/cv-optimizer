@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-const CLAUDE_API_KEY = import.meta.env.VITE_CLAUDE_API_KEY
+const BACKEND = 'https://func-cv-optimizer.azurewebsites.net/api'
 
 function SectieReview() {
   const location = useLocation()
@@ -18,7 +18,6 @@ function SectieReview() {
   const [definitieveTeksten, setDefinitieveTeksten] = useState({})
   const [klaar, setKlaar] = useState(false)
 
-  // Als er geen analyse data is, stuur terug naar home
   if (!analyse) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -40,7 +39,6 @@ function SectieReview() {
   const totaalSecties = secties.length
   const isLaatsteSectie = huidigeSectieIndex === totaalSecties - 1
 
-  // Analyseer de huidige sectie via Claude
   const analyseerSectie = async () => {
     setLoading(true)
     setFout(null)
@@ -50,72 +48,23 @@ function SectieReview() {
     setEigenInstructie('')
 
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch(`${BACKEND}/analyze-section`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': CLAUDE_API_KEY,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 8096,
-          system: `Je bent een professionele loopbaancoach en recruitment specialist met 15 jaar ervaring.
-Gedraag je als een eerlijke, constructieve coach — niet als een PR-bureau.
-Retourneer ALLEEN geldige JSON, geen markdown, geen inleiding, geen uitleg buiten de JSON.`,
-          messages: [{
-            role: 'user',
-            content: `Je hebt eerder al het CV en de vacature geanalyseerd.
-Nu ga je sectie "${huidigeSectie.naam}" uitgebreid analyseren.
-
-Originele sectietekst:
-<sectie>
-${huidigeSectie.originele_tekst}
-</sectie>
-
-Vacature context:
-<vacature>
-${vacatureTekst}
-</vacature>
-
-Eerder vastgestelde ontbrekende keywords: ${analyse.ontbrekende_keywords.join(', ')}
-Tone-of-voice aanbeveling: ${analyse.tone_aanbeveling}
-${keywordContext ? `\nExtra context van de gebruiker over ontbrekende keywords:\n${keywordContext}\n\nGebruik deze context om gerichte suggesties te geven als deze sectie relevant is voor de genoemde keywords.` : ''}
-
-Retourneer ALLEEN geldige JSON:
-{
-  "sectie_naam": "${huidigeSectie.naam}",
-  "analyse": {
-    "sterke_punten": ["punt 1", "punt 2"],
-    "zwakke_punten": ["punt 1", "punt 2"],
-    "redenering": "uitgebreide uitleg in 3-5 zinnen waarom aanpassingen nodig zijn",
-    "vacature_relevantie": "hoe sluit deze sectie aan op de vacature, specifiek"
-  },
-  "varianten": [
-    {
-      "variant_nummer": 1,
-      "label": "korte beschrijving variant 1",
-      "tekst": "volledige herschreven sectietekst variant 1"
-    },
-    {
-      "variant_nummer": 2,
-      "label": "korte beschrijving variant 2",
-      "tekst": "volledige herschreven sectietekst variant 2"
-    }
-  ],
-  "tips": ["concrete tip 1", "concrete tip 2"]
-}`
-          }]
+          sectie_naam: huidigeSectie.naam,
+          sectie_inhoud: huidigeSectie.originele_tekst,
+          vacature_tekst: vacatureTekst,
+          ontbrekende_keywords: analyse.ontbrekende_keywords,
+          tone_aanbeveling: analyse.tone_aanbeveling,
+          keyword_context: keywordContext || ''
         })
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error?.message || 'Er ging iets mis')
+      if (!response.ok) throw new Error(data.error || 'Er ging iets mis')
 
-      const rawText = data.content[0].text
-      const cleanText = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
-      setSectieAnalyse(JSON.parse(cleanText))
+      setSectieAnalyse(data)
 
     } catch (err) {
       setFout(err.message)
@@ -124,55 +73,26 @@ Retourneer ALLEEN geldige JSON:
     }
   }
 
-  // Vrije aanpassing via eigen instructie
   const verwerkEigenInstructie = async () => {
     setLoading(true)
     setFout(null)
 
     try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
+      const response = await fetch(`${BACKEND}/analyze-section`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': CLAUDE_API_KEY,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 2048,
-          system: `Je bent een professionele loopbaancoach. Retourneer ALLEEN geldige JSON, geen markdown.`,
-          messages: [{
-            role: 'user',
-            content: `De gebruiker wil sectie "${huidigeSectie.naam}" aanpassen met de volgende instructie:
-
-<instructie>
-${eigenInstructie}
-</instructie>
-
-Originele sectietekst:
-<sectie>
-${huidigeSectie.originele_tekst}
-</sectie>
-
-Herschrijf de sectie exact volgens de instructie van de gebruiker.
-Behoud de originele feiten — verzin niets bij.
-Retourneer ALLEEN geldige JSON:
-{
-  "herschreven_tekst": "de herschreven sectietekst",
-  "toelichting": "korte uitleg wat je hebt gedaan"
-}`
-          }]
+          sectie_naam: huidigeSectie.naam,
+          sectie_inhoud: huidigeSectie.originele_tekst,
+          vacature_tekst: vacatureTekst,
+          eigen_instructie: eigenInstructie
         })
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error?.message || 'Er ging iets mis')
+      if (!response.ok) throw new Error(data.error || 'Er ging iets mis')
 
-      const rawText = data.content[0].text
-      const cleanText = rawText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
-      const resultaat = JSON.parse(cleanText)
-      setAangepasteTekst(resultaat.herschreven_tekst)
+      setAangepasteTekst(data.herschreven || '')
 
     } catch (err) {
       setFout(err.message)
@@ -181,7 +101,6 @@ Retourneer ALLEEN geldige JSON:
     }
   }
 
-  // Sla de definitieve tekst op en ga naar volgende sectie
   const slaOpEnVerder = (tekst) => {
     const nieuweDefinitieveTeksten = {
       ...definitieveTeksten,
@@ -200,7 +119,6 @@ Retourneer ALLEEN geldige JSON:
     }
   }
 
-  // Samenvatting scherm
   if (klaar) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -247,11 +165,7 @@ Retourneer ALLEEN geldige JSON:
             </button>
             <button
               onClick={() => navigate('/cv-preview', {
-                state: {
-                  secties,
-                  definitieveTeksten,
-                  cvTekst
-                }
+                state: { secties, definitieveTeksten, cvTekst }
               })}
               className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
             >
@@ -276,7 +190,6 @@ Retourneer ALLEEN geldige JSON:
           </button>
         </div>
 
-        {/* Voortgangsbalk */}
         <div className="max-w-3xl mx-auto mt-3">
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
@@ -305,7 +218,7 @@ Retourneer ALLEEN geldige JSON:
           </div>
         </div>
 
-        {/* Keyword waarschuwing — toon welke keywords voor deze sectie zijn aangewezen */}
+        {/* Keyword waarschuwing */}
         {keywordSecties && (() => {
           const keywordsVoorDezeSectie = Object.entries(keywordSecties || {})
             .filter(([keyword, secties]) => secties.includes(huidigeSectie.naam))
@@ -319,22 +232,16 @@ Retourneer ALLEEN geldige JSON:
                 ⚠️ Je hebt extra context opgegeven voor deze sectie
               </p>
               <p className="text-sm text-amber-700 mb-3">
-                De volgende keywords wil je toevoegen aan <strong>{huidigeSectie.naam}</strong>. Claude verwerkt deze in één keer bij de analyse:
+                De volgende keywords wil je toevoegen aan <strong>{huidigeSectie.naam}</strong>:
               </p>
               <ul className="space-y-1 mb-3">
                 {keywordsVoorDezeSectie.map((keyword, i) => (
                   <li key={i} className="flex items-start gap-2 text-sm text-amber-800">
                     <span className="text-amber-500 flex-shrink-0 mt-0.5">→</span>
-                    <span><strong>{keyword}</strong>{keywordContext && keywordContext.includes(keyword + ':')
-                      ? ': ' + keywordContext.split(keyword + ':')[1]?.split('\n')[0]?.replace(/ Voeg dit ALLEEN.*$/, '').trim()
-                      : ''
-                    }</span>
+                    <span><strong>{keyword}</strong></span>
                   </li>
                 ))}
               </ul>
-              <p className="text-xs text-amber-600">
-                💡 Tip: klik op "Analyseer deze sectie" om alles in één keer te verwerken
-              </p>
             </div>
           )
         })()}
@@ -376,14 +283,13 @@ Retourneer ALLEEN geldige JSON:
         {sectieAnalyse && (
           <div className="space-y-6">
 
-            {/* Analyse */}
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <h3 className="text-base font-semibold text-gray-800 mb-4">Analyse</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                   <p className="text-xs font-medium text-green-600 uppercase mb-2">Sterke punten</p>
                   <ul className="space-y-1">
-                    {sectieAnalyse.analyse.sterke_punten.map((punt, i) => (
+                    {(sectieAnalyse.analyse?.sterke_punten || sectieAnalyse.sterkePunten || []).map((punt, i) => (
                       <li key={i} className="text-sm text-gray-700 flex gap-2">
                         <span className="text-green-500 flex-shrink-0">✓</span>{punt}
                       </li>
@@ -393,7 +299,7 @@ Retourneer ALLEEN geldige JSON:
                 <div>
                   <p className="text-xs font-medium text-red-600 uppercase mb-2">Verbeterpunten</p>
                   <ul className="space-y-1">
-                    {sectieAnalyse.analyse.zwakke_punten.map((punt, i) => (
+                    {(sectieAnalyse.analyse?.zwakke_punten || sectieAnalyse.verbeterpunten || []).map((punt, i) => (
                       <li key={i} className="text-sm text-gray-700 flex gap-2">
                         <span className="text-red-400 flex-shrink-0">→</span>{punt}
                       </li>
@@ -401,14 +307,12 @@ Retourneer ALLEEN geldige JSON:
                   </ul>
                 </div>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4 mb-4">
-                <p className="text-xs font-medium text-blue-700 uppercase mb-1">Redenering</p>
-                <p className="text-sm text-blue-800">{sectieAnalyse.analyse.redenering}</p>
-              </div>
-              <div className="bg-amber-50 rounded-lg p-4">
-                <p className="text-xs font-medium text-amber-700 uppercase mb-1">Vacature relevantie</p>
-                <p className="text-sm text-amber-800">{sectieAnalyse.analyse.vacature_relevantie}</p>
-              </div>
+              {(sectieAnalyse.analyse?.redenering || sectieAnalyse.relevantie) && (
+                <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                  <p className="text-xs font-medium text-blue-700 uppercase mb-1">Redenering</p>
+                  <p className="text-sm text-blue-800">{sectieAnalyse.analyse?.redenering || sectieAnalyse.relevantie}</p>
+                </div>
+              )}
             </div>
 
             {/* Keuzes */}
@@ -423,29 +327,27 @@ Retourneer ALLEEN geldige JSON:
                     className="w-full text-left"
                   >
                     <p className="text-sm font-medium text-gray-700">① Ongewijzigd laten</p>
-                    <p className="text-xs text-gray-400 mt-1">Huidige tekst behouden en doorgaan naar de volgende sectie</p>
+                    <p className="text-xs text-gray-400 mt-1">Huidige tekst behouden en doorgaan</p>
                   </button>
                 </div>
 
-                {/* Varianten */}
-                {sectieAnalyse.varianten.map((variant) => (
-                  <div key={variant.variant_nummer} className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+                {/* Herschreven variant */}
+                {(sectieAnalyse.herschreven || sectieAnalyse.varianten?.[0]?.tekst) && (
+                  <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
                     <p className="text-sm font-medium text-blue-800 mb-2">
-                      ② Variant {variant.variant_nummer}: {variant.label}
+                      ② Verbeterde versie
                     </p>
                     <p className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-white rounded p-3 mb-3">
-                      {variant.tekst}
+                      {sectieAnalyse.herschreven || sectieAnalyse.varianten?.[0]?.tekst}
                     </p>
                     <button
-                      onClick={() => {
-                        setAangepasteTekst(variant.tekst)
-                      }}
+                      onClick={() => setAangepasteTekst(sectieAnalyse.herschreven || sectieAnalyse.varianten?.[0]?.tekst)}
                       className="text-sm px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
-                      Gebruik variant {variant.variant_nummer}
+                      Gebruik deze versie
                     </button>
                   </div>
-                ))}
+                )}
 
                 {/* Optie: eigen instructie */}
                 <div className="border border-gray-200 rounded-lg p-4">
@@ -478,7 +380,7 @@ Retourneer ALLEEN geldige JSON:
               </div>
             </div>
 
-            {/* Bewerkbare preview na keuze */}
+            {/* Bewerkbare preview */}
             {aangepasteTekst && (
               <div className="bg-white rounded-xl border border-green-200 p-6">
                 <h3 className="text-base font-semibold text-gray-800 mb-3">Bewerkbare preview</h3>
@@ -503,20 +405,6 @@ Retourneer ALLEEN geldige JSON:
                     Annuleren
                   </button>
                 </div>
-              </div>
-            )}
-
-            {/* Tips */}
-            {sectieAnalyse.tips && sectieAnalyse.tips.length > 0 && (
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h3 className="text-base font-semibold text-gray-800 mb-3">Tips</h3>
-                <ul className="space-y-2">
-                  {sectieAnalyse.tips.map((tip, i) => (
-                    <li key={i} className="text-sm text-gray-700 flex gap-2">
-                      <span className="text-blue-500 flex-shrink-0">💡</span>{tip}
-                    </li>
-                  ))}
-                </ul>
               </div>
             )}
 
