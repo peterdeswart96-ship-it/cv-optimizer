@@ -1,7 +1,7 @@
 export const msalConfig = {
   auth: {
     clientId: import.meta.env.VITE_ENTRA_CLIENT_ID,
-    authority: 'https://cvoptimizer.ciamlogin.com/',
+    authority: 'https://cvoptimizer.ciamlogin.com/cvoptimizer.onmicrosoft.com',
     knownAuthorities: ['cvoptimizer.ciamlogin.com'],
     redirectUri: window.location.origin + '/auth/callback',
     postLogoutRedirectUri: window.location.origin
