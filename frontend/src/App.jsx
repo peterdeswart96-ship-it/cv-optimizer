@@ -1,13 +1,76 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import SectieReview from './SectieReview'
 import CVPreview from './CVPreview'
 import KeywordFeedback from './KeywordFeedback'
+import { BrandingProvider, useBranding } from './BrandingContext'
 
 const BACKEND = 'https://func-cv-optimizer-linux.azurewebsites.net/api'
 
 const MAX_CV_TEKENS = 8000
 const MAX_VACATURE_TEKENS = 4000
+
+// Header component — past zich aan op basis van branding
+function Header() {
+  const { branding } = useBranding()
+
+  return (
+    <div
+      className="border-b px-6 py-4 flex items-center gap-4"
+      style={{ backgroundColor: branding.primaire_kleur }}
+    >
+      {branding.logo_url && (
+        <img
+          src={branding.logo_url}
+          alt={branding.bedrijfsnaam}
+          className="h-10 object-contain"
+          onError={(e) => { e.target.style.display = 'none' }}
+        />
+      )}
+      <div>
+        <h1 className="text-2xl font-bold text-white">{branding.bedrijfsnaam}</h1>
+        <p className="text-sm text-white opacity-80 mt-0.5">{branding.welkomsttekst}</p>
+      </div>
+    </div>
+  )
+}
+
+// Organisatie selector — toont dropdown om van organisatie te wisselen
+function OrganisatieSelector() {
+  const { companyId, setCompanyId } = useBranding()
+  const [organisaties, setOrganisaties] = useState([])
+
+  useEffect(() => {
+    fetch(`${BACKEND}/organisaties`)
+      .then(res => res.json())
+      .then(data => setOrganisaties(data))
+      .catch(() => {})
+  }, [])
+
+  const handleChange = (e) => {
+    const gekozen = e.target.value
+    localStorage.setItem('companyId', gekozen)
+    setCompanyId(gekozen)
+  }
+
+  if (organisaties.length === 0) return null
+
+  return (
+    <div className="flex items-center gap-2 px-6 py-2 bg-white border-b border-gray-100">
+      <label className="text-xs text-gray-500">Organisatie:</label>
+      <select
+        value={companyId}
+        onChange={handleChange}
+        className="text-xs border border-gray-200 rounded px-2 py-1 text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+      >
+        <option value="default">Geen / Overig</option>
+        {organisaties.map(org => (
+          <option key={org.id} value={org.id}>{org.naam}</option>
+        ))}
+      </select>
+    </div>
+  )
+}
 
 function Analyse() {
   const [cvTekst, setCvTekst] = useState('')
@@ -16,6 +79,7 @@ function Analyse() {
   const [loading, setLoading] = useState(false)
   const [fout, setFout] = useState(null)
   const navigate = useNavigate()
+  const { branding } = useBranding()
 
   const analyseer = async () => {
     if (cvTekst.length > MAX_CV_TEKENS) {
@@ -70,11 +134,9 @@ function Analyse() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <h1 className="text-2xl font-bold text-gray-900">CV Optimizer</h1>
-        <p className="text-sm text-gray-500 mt-1">Analyseer je CV ten opzichte van een vacature</p>
-      </div>
+    <div className="min-h-screen" style={{ backgroundColor: branding.achtergrondkleur }}>
+      <Header />
+      <OrganisatieSelector />
 
       <div className="max-w-5xl mx-auto px-6 py-8">
 
@@ -112,7 +174,8 @@ function Analyse() {
             <button
               onClick={analyseer}
               disabled={loading || !cvTekst || !vacatureTekst || cvTekst.length > MAX_CV_TEKENS || vacatureTekst.length > MAX_VACATURE_TEKENS}
-              className="px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-8 py-3 text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              style={{ backgroundColor: branding.primaire_kleur }}
             >
               {loading ? 'Analyseren...' : 'Analyseer mijn CV'}
             </button>
@@ -121,7 +184,10 @@ function Analyse() {
 
         {loading && (
           <div className="mt-8 text-center">
-            <div className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <div
+              className="inline-block w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
+              style={{ borderColor: `${branding.primaire_kleur} transparent transparent transparent` }}
+            ></div>
             <p className="mt-3 text-gray-500 text-sm">Claude analyseert je CV...</p>
           </div>
         )}
@@ -134,7 +200,7 @@ function Analyse() {
 
         {analyse && (
           <div className="space-y-6">
-            <button onClick={() => setAnalyse(null)} className="text-sm text-blue-600 hover:underline">
+            <button onClick={() => setAnalyse(null)} className="text-sm hover:underline" style={{ color: branding.primaire_kleur }}>
               ← Nieuw CV analyseren
             </button>
 
@@ -182,9 +248,9 @@ function Analyse() {
                   <p className="text-sm text-gray-700">{analyse.tone_of_voice_cv}</p>
                 </div>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4">
-                <p className="text-xs font-medium text-blue-700 uppercase mb-1">Aanbeveling</p>
-                <p className="text-sm text-blue-800">{analyse.tone_aanbeveling}</p>
+              <div className="rounded-lg p-4" style={{ backgroundColor: `${branding.primaire_kleur}15` }}>
+                <p className="text-xs font-medium uppercase mb-1" style={{ color: branding.primaire_kleur }}>Aanbeveling</p>
+                <p className="text-sm text-gray-800">{analyse.tone_aanbeveling}</p>
               </div>
             </div>
 
@@ -202,12 +268,13 @@ function Analyse() {
             </div>
 
             {/* Knop naar sectie-review */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-6 text-center">
+            <div className="rounded-xl border p-6 text-center" style={{ backgroundColor: `${branding.primaire_kleur}10`, borderColor: `${branding.primaire_kleur}40` }}>
               <h2 className="text-lg font-semibold text-gray-800 mb-2">Klaar om je CV te verbeteren?</h2>
               <p className="text-sm text-gray-600 mb-4">Ga sectie voor sectie door je CV en laat Claude concrete verbeteringsvoorstellen genereren.</p>
               <button
                 onClick={() => navigate('/keyword-feedback', { state: { analyse, cvTekst, vacatureTekst } })}
-                className="px-8 py-3 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+                className="px-8 py-3 text-white font-medium rounded-lg transition-colors"
+                style={{ backgroundColor: branding.primaire_kleur }}
               >
                 Verbeter mijn CV per sectie →
               </button>
@@ -222,14 +289,16 @@ function Analyse() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Analyse />} />
-        <Route path="/keyword-feedback" element={<KeywordFeedback />} />
-        <Route path="/sectie-review" element={<SectieReview />} />
-        <Route path="/cv-preview" element={<CVPreview />} />
-      </Routes>
-    </BrowserRouter>
+    <BrandingProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Analyse />} />
+          <Route path="/keyword-feedback" element={<KeywordFeedback />} />
+          <Route path="/sectie-review" element={<SectieReview />} />
+          <Route path="/cv-preview" element={<CVPreview />} />
+        </Routes>
+      </BrowserRouter>
+    </BrandingProvider>
   )
 }
 
