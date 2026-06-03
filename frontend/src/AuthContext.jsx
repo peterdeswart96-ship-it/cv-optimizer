@@ -12,13 +12,11 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     msalInstance.initialize().then(() => {
-      // Accounts checken bij laden
       const accounts = msalInstance.getAllAccounts()
       if (accounts.length > 0) {
         setGebruiker(accounts[0])
       }
 
-      // Redirect afhandelen na login
       msalInstance.handleRedirectPromise().then(response => {
         if (response?.account) {
           setGebruiker(response.account)
@@ -32,6 +30,17 @@ export function AuthProvider({ children }) {
 
   const inloggen = async () => {
     await msalInstance.loginRedirect(loginRequest)
+  }
+
+  // Directe link naar sign-up pagina van Entra External ID
+  const registreren = () => {
+    const signUpUrl = `https://cvoptimizer.ciamlogin.com/5399f876-4a61-48dc-b623-5dde6806ce3c/oauth2/v2.0/authorize?` +
+      `client_id=${import.meta.env.VITE_ENTRA_CLIENT_ID}` +
+      `&response_type=code` +
+      `&redirect_uri=${encodeURIComponent(window.location.origin + '/auth/callback')}` +
+      `&scope=openid%20profile%20email` +
+      `&prompt=create`
+    window.location.href = signUpUrl
   }
 
   const uitloggen = async () => {
@@ -55,7 +64,6 @@ export function AuthProvider({ children }) {
 
   const getClaims = () => gebruiker?.idTokenClaims || {}
 
-  // companyId en rol uit token lezen — Entra External ID gebruikt extension_ prefix
   const companyId = getClaims()['extension_companyId'] ||
                     getClaims()['companyId'] ||
                     localStorage.getItem('companyId') ||
@@ -72,6 +80,7 @@ export function AuthProvider({ children }) {
       gebruiker,
       loading,
       inloggen,
+      registreren,
       uitloggen,
       getToken,
       companyId,

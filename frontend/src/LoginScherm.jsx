@@ -1,7 +1,7 @@
 import { useAuth } from './AuthContext'
 
 export default function LoginScherm() {
-  const { inloggen } = useAuth()
+  const { inloggen, registreren } = useAuth()
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -15,13 +15,19 @@ export default function LoginScherm() {
 
         <button
           onClick={inloggen}
-          className="w-full px-6 py-3 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors mb-4"
+          className="w-full px-6 py-3 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors mb-3"
         >
           Inloggen
         </button>
 
+        <button
+          onClick={registreren}
+          className="w-full px-6 py-3 bg-white text-indigo-600 font-medium rounded-lg border border-indigo-200 hover:bg-indigo-50 transition-colors mb-4"
+        >
+          Account aanmaken
+        </button>
+
         <p className="text-xs text-gray-400">
-          Nog geen account? Registreer je via de inlogpagina.<br />
           Je account wordt geactiveerd na goedkeuring van de beheerder.
         </p>
       </div>
