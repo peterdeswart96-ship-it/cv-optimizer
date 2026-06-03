@@ -35,7 +35,7 @@ export function AuthProvider({ children }) {
   // Directe link naar sign-up pagina van Entra External ID
   const registreren = () => {
     const signUpUrl = `https://cvoptimizer.ciamlogin.com/5399f876-4a61-48dc-b623-5dde6806ce3c/oauth2/v2.0/authorize?` +
-      `client_id=${import.meta.env.VITE_ENTRA_CLIENT_ID}` +
+      `client_id=6248a5e0-8418-4d47-9691-9f8b07dc5723` +
       `&response_type=code` +
       `&redirect_uri=${encodeURIComponent(window.location.origin + '/auth/callback')}` +
       `&scope=openid%20profile%20email` +
