@@ -1,39 +1,34 @@
 name: Deploy CV Optimizer
-
 on:
   push:
     branches: [main]
-
 permissions:
   contents: read
   pages: write
   id-token: write
-
 jobs:
   deploy-frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
       - name: Install & Build
+        env:
+          VITE_ENTRA_CLIENT_ID: ${{ secrets.VITE_ENTRA_CLIENT_ID }}
         run: |
           cd frontend
+          echo "VITE_ENTRA_CLIENT_ID=$VITE_ENTRA_CLIENT_ID" > .env
           npm install
           npm run build
-
       - name: Setup Pages
         uses: actions/configure-pages@v4
-
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: './frontend/dist'
-
   deploy-pages:
     environment:
       name: github-pages
@@ -44,22 +39,18 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
   deploy-backend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
       - name: Install backend dependencies
         run: |
           cd backend
           npm install
-
       - name: Deploy Azure Functions
         uses: Azure/functions-action@v1
         with:

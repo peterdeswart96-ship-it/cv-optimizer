@@ -13,28 +13,30 @@ const defaultBranding = {
 
 const BrandingContext = createContext(defaultBranding)
 
-export function BrandingProvider({ children }) {
+// companyId komt nu als prop binnen — vanuit AuthContext na login
+// Voor admins die wisselen: localStorage override
+export function BrandingProvider({ children, companyId = 'default' }) {
   const [branding, setBranding] = useState(defaultBranding)
-  const [companyId, setCompanyId] = useState(localStorage.getItem('companyId') || 'default')
+
+  // Admins kunnen via localStorage een andere organisatie kiezen
+  const effectiefCompanyId = localStorage.getItem('companyId') || companyId
 
   useEffect(() => {
-    fetch(`${BACKEND}/branding?companyId=${companyId}`)
+    fetch(`${BACKEND}/branding?companyId=${effectiefCompanyId}`)
       .then(res => res.json())
       .then(data => {
         setBranding(data)
-        // CSS custom properties dynamisch zetten zodat Tailwind ze kan gebruiken
         document.documentElement.style.setProperty('--kleur-primair', data.primaire_kleur)
         document.documentElement.style.setProperty('--kleur-achtergrond', data.achtergrondkleur)
-        // Achtergrondkleur op de body zetten
         document.body.style.backgroundColor = data.achtergrondkleur
       })
       .catch(() => {
         // Bij fout: standaard branding behouden
       })
-  }, [companyId])
+  }, [effectiefCompanyId])
 
   return (
-    <BrandingContext.Provider value={{ branding, companyId, setCompanyId }}>
+    <BrandingContext.Provider value={{ branding }}>
       {children}
     </BrandingContext.Provider>
   )
