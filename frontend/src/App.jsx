@@ -13,6 +13,14 @@ const BACKEND = 'https://func-cv-optimizer-linux.azurewebsites.net/api'
 const MAX_CV_TEKENS = 12000
 const MAX_VACATURE_TEKENS = 6000
 
+// Bepaal of een kleur donker is (geeft true terug voor donkere kleuren)
+function isDonker(hex) {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return (r * 299 + g * 587 + b * 114) / 1000 < 128
+}
+
 function Header() {
   const { branding } = useBranding()
   const { gebruiker, uitloggen } = useAuth()
@@ -400,13 +408,14 @@ function Analyse() {
                 </div>
               </div>
               <textarea
-                className="w-full h-64 p-3 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-64 p-3 border rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{ backgroundColor: isDonker(branding.achtergrondkleur) ? '#1F2937' : '#FFFFFF', color: isDonker(branding.achtergrondkleur) ? '#F9FAFB' : '#111827', borderColor: isDonker(branding.achtergrondkleur) ? '#374151' : '#D1D5DB' }}
                 placeholder="Plak hier je CV tekst, of upload een PDF/DOCX..."
                 value={cvTekst}
                 onChange={(e) => { setCvTekst(e.target.value); if (e.target.value.length > 100 && !toonOpslaanKnop) toonOpslaanMelding() }}
               />
               <div className="flex items-center justify-between mt-1">
-                <p className={`text-xs ${cvTekst.length > MAX_CV_TEKENS ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
+                <p className={`text-xs ${cvTekst.length > MAX_CV_TEKENS ? 'text-red-400 font-medium' : isDonker(branding.achtergrondkleur) ? 'text-gray-400' : 'text-gray-400'}`}>
                   {cvTekst.length} / {MAX_CV_TEKENS} tekens
                 </p>
                 {toonOpslaanKnop && cvTekst && (
@@ -421,14 +430,15 @@ function Analyse() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Vacature</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: isDonker(branding.achtergrondkleur) ? '#F9FAFB' : '#374151' }}>Vacature</label>
               <textarea
-                className="w-full h-64 p-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-64 p-3 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{ backgroundColor: isDonker(branding.achtergrondkleur) ? '#1F2937' : '#FFFFFF', color: isDonker(branding.achtergrondkleur) ? '#F9FAFB' : '#111827', borderColor: isDonker(branding.achtergrondkleur) ? '#374151' : '#D1D5DB' }}
                 placeholder="Plak hier de vacaturetekst..."
                 value={vacatureTekst}
                 onChange={(e) => setVacatureTekst(e.target.value)}
               />
-              <p className={`text-xs mt-1 text-right ${vacatureTekst.length > MAX_VACATURE_TEKENS ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
+              <p className={`text-xs mt-1 text-right ${vacatureTekst.length > MAX_VACATURE_TEKENS ? 'text-red-400 font-medium' : isDonker(branding.achtergrondkleur) ? 'text-gray-400' : 'text-gray-400'}`}>
                 {vacatureTekst.length} / {MAX_VACATURE_TEKENS} tekens
               </p>
             </div>
