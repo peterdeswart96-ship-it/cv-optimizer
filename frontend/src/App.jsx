@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import SectieReview from './SectieReview'
 import CVPreview from './CVPreview'
@@ -91,15 +91,201 @@ function OrganisatieSelector() {
   )
 }
 
+// Favorieten panel — opgeslagen CV's tonen en selecteren
+function FavorietenPanel({ onSelecteer, cvTekst, onOpslaan, onSluiten }) {
+  const { gebruiker, getToken } = useAuth()
+  const { branding } = useBranding()
+  const [cvs, setCvs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [opslaanNaam, setOpslaanNaam] = useState('')
+  const [opslaanBezig, setOpslaanBezig] = useState(false)
+  const [bericht, setBericht] = useState(null)
+
+  const gebruikerId = gebruiker?.localAccountId || gebruiker?.homeAccountId?.split('.')[0] || 'onbekend'
+
+  useEffect(() => {
+    laadCvs()
+  }, [])
+
+  const laadCvs = async () => {
+    setLoading(true)
+    try {
+      const token = await getToken()
+      const headers = {}
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      const res = await fetch(`${BACKEND}/cv-lijst?gebruiker_id=${gebruikerId}`, { headers })
+      const data = await res.json()
+      setCvs(Array.isArray(data) ? data : [])
+    } catch {
+      setCvs([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const verwijder = async (blobNaam) => {
+    if (!window.confirm('CV verwijderen?')) return
+    try {
+      const token = await getToken()
+      const headers = {}
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      await fetch(`${BACKEND}/cv-lijst?gebruiker_id=${gebruikerId}&blob_naam=${encodeURIComponent(blobNaam)}`, {
+        method: 'DELETE', headers
+      })
+      await laadCvs()
+      setBericht({ type: 'succes', tekst: 'CV verwijderd' })
+    } catch {
+      setBericht({ type: 'fout', tekst: 'Kon CV niet verwijderen' })
+    }
+  }
+
+  const slaOp = async () => {
+    if (!cvTekst || !opslaanNaam.trim()) return
+    setOpslaanBezig(true)
+    try {
+      const token = await getToken()
+      const headers = { 'Content-Type': 'application/json' }
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      const res = await fetch(`${BACKEND}/cv-opslaan`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ cv_tekst: cvTekst, cv_naam: opslaanNaam.trim(), gebruiker_id: gebruikerId })
+      })
+      const data = await res.json()
+      if (data.success) {
+        setBericht({ type: 'succes', tekst: 'CV opgeslagen!' })
+        setOpslaanNaam('')
+        await laadCvs()
+      } else {
+        setBericht({ type: 'fout', tekst: data.error || 'Kon CV niet opslaan' })
+      }
+    } catch {
+      setBericht({ type: 'fout', tekst: 'Fout bij opslaan' })
+    } finally {
+      setOpslaanBezig(false)
+    }
+  }
+
+  const formatDatum = (iso) => {
+    return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-screen overflow-y-auto">
+        <div className="p-6 border-b border-gray-100 flex items-center justify-between"
+          style={{ backgroundColor: branding.primaire_kleur }}>
+          <h2 className="text-lg font-semibold text-white">Mijn opgeslagen CV's</h2>
+          <button onClick={onSluiten} className="text-white opacity-80 hover:opacity-100 text-xl">✕</button>
+        </div>
+
+        <div className="p-6">
+          {/* Huidig CV opslaan */}
+          {cvTekst && (
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-sm font-medium text-gray-700 mb-2">Huidig CV opslaan</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Naam voor dit CV..."
+                  value={opslaanNaam}
+                  onChange={(e) => setOpslaanNaam(e.target.value)}
+                  className="flex-1 text-sm border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onKeyDown={(e) => e.key === 'Enter' && slaOp()}
+                />
+                <button
+                  onClick={slaOp}
+                  disabled={opslaanBezig || !opslaanNaam.trim()}
+                  className="px-4 py-2 text-sm text-white rounded disabled:opacity-50 transition-colors"
+                  style={{ backgroundColor: branding.primaire_kleur }}
+                >
+                  {opslaanBezig ? '...' : 'Opslaan'}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Max 5 CV's per account</p>
+            </div>
+          )}
+
+          {/* Bericht */}
+          {bericht && (
+            <div className={`mb-4 p-3 rounded-lg text-sm ${bericht.type === 'succes' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+              {bericht.tekst}
+            </div>
+          )}
+
+          {/* CV lijst */}
+          {loading ? (
+            <p className="text-sm text-gray-400 text-center py-4">Laden...</p>
+          ) : cvs.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-4">Nog geen CV's opgeslagen</p>
+          ) : (
+            <div className="space-y-2">
+              {cvs.map((cv) => (
+                <div key={cv.blob_naam}
+                  className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{cv.naam}</p>
+                    <p className="text-xs text-gray-400">{formatDatum(cv.opgeslagen_op)} · {cv.tekst_lengte.toLocaleString()} tekens</p>
+                  </div>
+                  <div className="flex gap-2 ml-3">
+                    <button
+                      onClick={() => { onSelecteer(cv.tekst); onSluiten() }}
+                      className="px-3 py-1 text-xs text-white rounded transition-colors"
+                      style={{ backgroundColor: branding.primaire_kleur }}
+                    >
+                      Gebruiken
+                    </button>
+                    <button
+                      onClick={() => verwijder(cv.blob_naam)}
+                      className="px-3 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50 transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Analyse() {
   const [cvTekst, setCvTekst] = useState('')
   const [vacatureTekst, setVacatureTekst] = useState('')
   const [analyse, setAnalyse] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [uploadLoading, setUploadLoading] = useState(false)
   const [fout, setFout] = useState(null)
+  const [toonFavorieten, setToonFavorieten] = useState(false)
+  const fileInputRef = useRef(null)
   const navigate = useNavigate()
   const { branding } = useBranding()
   const { getToken } = useAuth()
+
+  const uploadCv = async (bestand) => {
+    setUploadLoading(true)
+    setFout(null)
+    try {
+      const formData = new FormData()
+      formData.append('bestand', bestand)
+      const token = await getToken()
+      const headers = {}
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      const res = await fetch(`${BACKEND}/upload`, { method: 'POST', headers, body: formData })
+      const data = await res.json()
+      if (data.tekst) {
+        setCvTekst(data.tekst)
+      } else {
+        setFout(data.error || 'Kon bestand niet verwerken')
+      }
+    } catch {
+      setFout('Fout bij uploaden bestand')
+    } finally {
+      setUploadLoading(false)
+    }
+  }
 
   const analyseer = async () => {
     if (cvTekst.length > MAX_CV_TEKENS) {
@@ -121,8 +307,7 @@ function Analyse() {
       if (token) headers['Authorization'] = `Bearer ${token}`
 
       const response = await fetch(`${BACKEND}/analyze`, {
-        method: 'POST',
-        headers,
+        method: 'POST', headers,
         body: JSON.stringify({ cv_tekst: cvTekst, vacature_tekst: vacatureTekst })
       })
 
@@ -158,15 +343,50 @@ function Analyse() {
       <Header />
       <OrganisatieSelector />
 
+      {toonFavorieten && (
+        <FavorietenPanel
+          cvTekst={cvTekst}
+          onSelecteer={(tekst) => setCvTekst(tekst)}
+          onSluiten={() => setToonFavorieten(false)}
+        />
+      )}
+
       <div className="max-w-5xl mx-auto px-6 py-8">
 
         {!analyse && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Jouw CV</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">Jouw CV</label>
+                <div className="flex gap-2">
+                  {/* Upload knop */}
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadLoading}
+                    className="flex items-center gap-1 px-3 py-1 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors"
+                  >
+                    {uploadLoading ? 'Laden...' : '📎 Upload PDF/DOCX'}
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.docx"
+                    className="hidden"
+                    onChange={(e) => e.target.files[0] && uploadCv(e.target.files[0])}
+                  />
+                  {/* Favorieten knop */}
+                  <button
+                    onClick={() => setToonFavorieten(true)}
+                    className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg transition-colors"
+                    style={{ borderColor: branding.primaire_kleur, color: branding.primaire_kleur }}
+                  >
+                    ⭐ Opgeslagen CV's
+                  </button>
+                </div>
+              </div>
               <textarea
                 className="w-full h-64 p-3 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Plak hier je CV tekst..."
+                placeholder="Plak hier je CV tekst, of upload een PDF/DOCX..."
                 value={cvTekst}
                 onChange={(e) => setCvTekst(e.target.value)}
               />
