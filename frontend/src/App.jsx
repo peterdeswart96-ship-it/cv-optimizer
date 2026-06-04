@@ -6,6 +6,7 @@ import KeywordFeedback from './KeywordFeedback'
 import { BrandingProvider, useBranding } from './BrandingContext'
 import { AuthProvider, useAuth } from './AuthContext'
 import LoginScherm from './LoginScherm'
+import HoeWerktHet from './HoeWerktHet'
 
 const BACKEND = 'https://func-cv-optimizer-linux.azurewebsites.net/api'
 
@@ -37,6 +38,12 @@ function Header() {
       </div>
       {gebruiker && (
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => window.open('/hoe-werkt-het', '_blank')}
+            className="px-3 py-1 text-sm bg-white bg-opacity-20 text-white rounded hover:bg-opacity-30 transition-colors"
+          >
+            ❓ Hoe werkt het?
+          </button>
           <span className="text-white text-sm opacity-80">
             {gebruiker.name || gebruiker.username}
           </span>
@@ -262,7 +269,7 @@ function Analyse() {
   const fileInputRef = useRef(null)
   const navigate = useNavigate()
   const { branding } = useBranding()
-  const { getToken } = useAuth()
+  const { getToken, gebruiker } = useAuth()
 
   const uploadCv = async (bestand) => {
     setUploadLoading(true)
@@ -365,7 +372,7 @@ function Analyse() {
                     disabled={uploadLoading}
                     className="flex items-center gap-1 px-3 py-1 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors"
                   >
-                    {uploadLoading ? 'Laden...' : '📎 Upload PDF/DOCX'}
+                    {uploadLoading ? 'Laden...' : '📎 Upload een CV (DOCX of PDF)'}
                   </button>
                   <input
                     ref={fileInputRef}
@@ -542,6 +549,7 @@ function AppInhoud() {
           <Route path="/keyword-feedback" element={<KeywordFeedback />} />
           <Route path="/sectie-review" element={<SectieReview />} />
           <Route path="/cv-preview" element={<CVPreview />} />
+          <Route path="/hoe-werkt-het" element={<HoeWerktHet />} />
         </Routes>
       </BrowserRouter>
     </BrandingProvider>
