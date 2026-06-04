@@ -264,12 +264,20 @@ function Analyse() {
   const [analyse, setAnalyse] = useState(null)
   const [loading, setLoading] = useState(false)
   const [uploadLoading, setUploadLoading] = useState(false)
+  const [toonOpslaanKnop, setToonOpslaanKnop] = useState(false)
+  const [knipperend, setKnipperend] = useState(false)
   const [fout, setFout] = useState(null)
   const [toonFavorieten, setToonFavorieten] = useState(false)
   const fileInputRef = useRef(null)
   const navigate = useNavigate()
   const { branding } = useBranding()
   const { getToken, gebruiker } = useAuth()
+
+  const toonOpslaanMelding = () => {
+    setToonOpslaanKnop(true)
+    setKnipperend(true)
+    setTimeout(() => setKnipperend(false), 4000)
+  }
 
   const uploadCv = async (bestand) => {
     setUploadLoading(true)
@@ -395,11 +403,22 @@ function Analyse() {
                 className="w-full h-64 p-3 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Plak hier je CV tekst, of upload een PDF/DOCX..."
                 value={cvTekst}
-                onChange={(e) => setCvTekst(e.target.value)}
+                onChange={(e) => { setCvTekst(e.target.value); if (e.target.value.length > 100 && !toonOpslaanKnop) toonOpslaanMelding() }}
               />
-              <p className={`text-xs mt-1 text-right ${cvTekst.length > MAX_CV_TEKENS ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
-                {cvTekst.length} / {MAX_CV_TEKENS} tekens
-              </p>
+              <div className="flex items-center justify-between mt-1">
+                <p className={`text-xs ${cvTekst.length > MAX_CV_TEKENS ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
+                  {cvTekst.length} / {MAX_CV_TEKENS} tekens
+                </p>
+                {toonOpslaanKnop && cvTekst && (
+                  <button
+                    onClick={() => { setToonFavorieten(true); setToonOpslaanKnop(false) }}
+                    className={`text-xs px-3 py-1 rounded-lg text-white font-medium transition-all ${knipperend ? 'animate-pulse' : ''}`}
+                    style={{ backgroundColor: branding.primaire_kleur }}
+                  >
+                    ⭐ Opslaan als favoriet
+                  </button>
+                )}
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Vacature</label>
