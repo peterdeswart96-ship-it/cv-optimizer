@@ -12,13 +12,11 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     msalInstance.initialize().then(() => {
-      // Accounts checken bij laden
       const accounts = msalInstance.getAllAccounts()
       if (accounts.length > 0) {
         setGebruiker(accounts[0])
       }
 
-      // Redirect afhandelen na login
       msalInstance.handleRedirectPromise().then(response => {
         if (response?.account) {
           setGebruiker(response.account)
@@ -32,6 +30,11 @@ export function AuthProvider({ children }) {
 
   const inloggen = async () => {
     await msalInstance.loginRedirect(loginRequest)
+  }
+
+  // Directe link naar sign-up pagina van Entra External ID
+  const registreren = async () => {
+    await msalInstance.loginRedirect({ ...loginRequest, prompt: 'create' })
   }
 
   const uitloggen = async () => {
@@ -55,14 +58,16 @@ export function AuthProvider({ children }) {
 
   const getClaims = () => gebruiker?.idTokenClaims || {}
 
-  // companyId en rol uit token lezen — Entra External ID gebruikt extension_ prefix
-  const companyId = getClaims()['extension_companyId'] ||
-                    getClaims()['companyId'] ||
+  const claims = getClaims()
+  const companyId = (claims['extn.companyId'] && claims['extn.companyId'][0]) ||
+                    claims['extension_companyId'] ||
+                    claims['companyId'] ||
                     localStorage.getItem('companyId') ||
                     'default'
 
-  const rol = getClaims()['extension_rol'] ||
-              getClaims()['rol'] ||
+  const rol = (claims['extn.rol'] && claims['extn.rol'][0]) ||
+              claims['extension_rol'] ||
+              claims['rol'] ||
               'gebruiker'
 
   const isAdmin = rol === 'admin'
@@ -72,6 +77,7 @@ export function AuthProvider({ children }) {
       gebruiker,
       loading,
       inloggen,
+      registreren,
       uitloggen,
       getToken,
       companyId,

@@ -13,6 +13,15 @@ const BACKEND = 'https://func-cv-optimizer-linux.azurewebsites.net/api'
 const MAX_CV_TEKENS = 12000
 const MAX_VACATURE_TEKENS = 6000
 
+// Bepaal of een kleur donker is (geeft true terug voor donkere kleuren)
+function isDonker(hex) {
+  if (!hex || !hex.startsWith('#') || hex.length < 7) return false
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return (r * 299 + g * 587 + b * 114) / 1000 < 128
+}
+
 function Header() {
   const { branding } = useBranding()
   const { gebruiker, uitloggen } = useAuth()
@@ -202,8 +211,11 @@ function FavorietenPanel({ onSelecteer, cvTekst, onOpslaan, onSluiten }) {
                 <button
                   onClick={slaOp}
                   disabled={opslaanBezig || !opslaanNaam.trim()}
-                  className="px-4 py-2 text-sm text-white rounded disabled:opacity-50 transition-colors"
-                  style={{ backgroundColor: branding.primaire_kleur }}
+                  className="px-4 py-2 text-sm rounded disabled:opacity-50 transition-colors"
+                  style={{
+                    backgroundColor: branding.primaire_kleur,
+                    color: isDonker(branding.primaire_kleur) ? '#FFFFFF' : '#111827'
+                  }}
                 >
                   {opslaanBezig ? '...' : 'Opslaan'}
                 </button>
@@ -236,8 +248,11 @@ function FavorietenPanel({ onSelecteer, cvTekst, onOpslaan, onSluiten }) {
                   <div className="flex gap-2 ml-3">
                     <button
                       onClick={() => { onSelecteer(cv.tekst); onSluiten() }}
-                      className="px-3 py-1 text-xs text-white rounded transition-colors"
-                      style={{ backgroundColor: branding.primaire_kleur }}
+                      className="px-3 py-1 text-xs rounded transition-colors"
+                      style={{
+                        backgroundColor: branding.primaire_kleur,
+                        color: isDonker(branding.primaire_kleur) ? '#FFFFFF' : '#111827'
+                      }}
                     >
                       Gebruiken
                     </button>
@@ -264,12 +279,28 @@ function Analyse() {
   const [analyse, setAnalyse] = useState(null)
   const [loading, setLoading] = useState(false)
   const [uploadLoading, setUploadLoading] = useState(false)
+  const [toonOpslaanKnop, setToonOpslaanKnop] = useState(false)
+  const [knipperend, setKnipperend] = useState(false)
   const [fout, setFout] = useState(null)
   const [toonFavorieten, setToonFavorieten] = useState(false)
   const fileInputRef = useRef(null)
   const navigate = useNavigate()
   const { branding } = useBranding()
   const { getToken, gebruiker } = useAuth()
+
+  // Bepaal tekstkleur op basis van achtergrondkleur (voor labels, tellers, etc.)
+  const labelKleur = isDonker(branding.achtergrondkleur) ? '#F9FAFB' : '#374151'
+  const subTekstKleur = isDonker(branding.achtergrondkleur) ? '#9CA3AF' : '#6B7280'
+  const knopBorderKleur = isDonker(branding.achtergrondkleur) ? '#6B7280' : '#D1D5DB'
+  const knopTekstKleur = isDonker(branding.achtergrondkleur) ? '#E5E7EB' : '#4B5563'
+  // Knoptekst op primaire kleur achtergrond
+  const primaireTekstKleur = isDonker(branding.primaire_kleur) ? '#FFFFFF' : '#111827'
+
+  const toonOpslaanMelding = () => {
+    setToonOpslaanKnop(true)
+    setKnipperend(true)
+    setTimeout(() => setKnipperend(false), 4000)
+  }
 
   const uploadCv = async (bestand) => {
     setUploadLoading(true)
@@ -362,15 +393,27 @@ function Analyse() {
 
         {!analyse && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* CV kolom */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-gray-700">Jouw CV</label>
+                {/* FIX 1: "Jouw CV" label — kleur afhankelijk van achtergrond */}
+                <label
+                  className="block text-sm font-medium"
+                  style={{ color: labelKleur }}
+                >
+                  Jouw CV
+                </label>
                 <div className="flex gap-2">
-                  {/* Upload knop */}
+                  {/* FIX 2a: Upload knop — rand en tekst leesbaar op donkere achtergrond */}
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadLoading}
-                    className="flex items-center gap-1 px-3 py-1 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors"
+                    className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg transition-colors disabled:opacity-50"
+                    style={{
+                      borderColor: knopBorderKleur,
+                      color: knopTekstKleur,
+                      backgroundColor: 'transparent'
+                    }}
                   >
                     {uploadLoading ? 'Laden...' : '📎 Upload een CV (DOCX of PDF)'}
                   </button>
@@ -381,35 +424,85 @@ function Analyse() {
                     className="hidden"
                     onChange={(e) => e.target.files[0] && uploadCv(e.target.files[0])}
                   />
-                  {/* Favorieten knop */}
+                  {/* FIX 2b: Favorieten knop — rand en tekst leesbaar op donkere achtergrond */}
                   <button
                     onClick={() => setToonFavorieten(true)}
                     className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg transition-colors"
-                    style={{ borderColor: branding.primaire_kleur, color: branding.primaire_kleur }}
+                    style={{
+                      borderColor: isDonker(branding.achtergrondkleur)
+                        ? branding.primaire_kleur
+                        : branding.primaire_kleur,
+                      color: isDonker(branding.achtergrondkleur)
+                        ? '#F9FAFB'
+                        : branding.primaire_kleur,
+                      backgroundColor: isDonker(branding.achtergrondkleur)
+                        ? `${branding.primaire_kleur}33`
+                        : 'transparent'
+                    }}
                   >
                     ⭐ Opgeslagen CV's
                   </button>
                 </div>
               </div>
               <textarea
-                className="w-full h-64 p-3 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-64 p-3 border rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{
+                  backgroundColor: isDonker(branding.achtergrondkleur) ? '#1F2937' : '#FFFFFF',
+                  color: isDonker(branding.achtergrondkleur) ? '#F9FAFB' : '#111827',
+                  borderColor: isDonker(branding.achtergrondkleur) ? '#374151' : '#D1D5DB'
+                }}
                 placeholder="Plak hier je CV tekst, of upload een PDF/DOCX..."
                 value={cvTekst}
-                onChange={(e) => setCvTekst(e.target.value)}
+                onChange={(e) => {
+                  setCvTekst(e.target.value)
+                  if (e.target.value.length > 100 && !toonOpslaanKnop) toonOpslaanMelding()
+                }}
               />
-              <p className={`text-xs mt-1 text-right ${cvTekst.length > MAX_CV_TEKENS ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
-                {cvTekst.length} / {MAX_CV_TEKENS} tekens
-              </p>
+              <div className="flex items-center justify-between mt-1">
+                <p
+                  className="text-xs"
+                  style={{ color: cvTekst.length > MAX_CV_TEKENS ? '#F87171' : subTekstKleur }}
+                >
+                  {cvTekst.length} / {MAX_CV_TEKENS} tekens
+                </p>
+                {toonOpslaanKnop && cvTekst && (
+                  <button
+                    onClick={() => { setToonFavorieten(true); setToonOpslaanKnop(false) }}
+                    className={`text-xs px-3 py-1 rounded-lg font-medium transition-all ${knipperend ? 'animate-pulse' : ''}`}
+                    style={{
+                      backgroundColor: branding.primaire_kleur,
+                      color: primaireTekstKleur
+                    }}
+                  >
+                    ⭐ Opslaan als favoriet
+                  </button>
+                )}
+              </div>
             </div>
+
+            {/* Vacature kolom */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Vacature</label>
+              <label
+                className="block text-sm font-medium mb-2"
+                style={{ color: labelKleur }}
+              >
+                Vacature
+              </label>
               <textarea
-                className="w-full h-64 p-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-64 p-3 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{
+                  backgroundColor: isDonker(branding.achtergrondkleur) ? '#1F2937' : '#FFFFFF',
+                  color: isDonker(branding.achtergrondkleur) ? '#F9FAFB' : '#111827',
+                  borderColor: isDonker(branding.achtergrondkleur) ? '#374151' : '#D1D5DB'
+                }}
                 placeholder="Plak hier de vacaturetekst..."
                 value={vacatureTekst}
                 onChange={(e) => setVacatureTekst(e.target.value)}
               />
-              <p className={`text-xs mt-1 text-right ${vacatureTekst.length > MAX_VACATURE_TEKENS ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
+              <p
+                className="text-xs mt-1 text-right"
+                style={{ color: vacatureTekst.length > MAX_VACATURE_TEKENS ? '#F87171' : subTekstKleur }}
+              >
                 {vacatureTekst.length} / {MAX_VACATURE_TEKENS} tekens
               </p>
             </div>
@@ -418,11 +511,15 @@ function Analyse() {
 
         {!analyse && (
           <div className="mt-6 flex justify-center">
+            {/* FIX 3: Analyseer knop — tekstkleur bepaald door primaire kleur (de achtergrond van de knop) */}
             <button
               onClick={analyseer}
               disabled={loading || !cvTekst || !vacatureTekst || cvTekst.length > MAX_CV_TEKENS || vacatureTekst.length > MAX_VACATURE_TEKENS}
-              className="px-8 py-3 text-white font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              style={{ backgroundColor: branding.primaire_kleur }}
+              className="px-8 py-3 font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              style={{
+                backgroundColor: branding.primaire_kleur,
+                color: primaireTekstKleur
+              }}
             >
               {loading ? 'Analyseren...' : 'Analyseer mijn CV'}
             </button>
@@ -435,7 +532,7 @@ function Analyse() {
               className="inline-block w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
               style={{ borderColor: `${branding.primaire_kleur} transparent transparent transparent` }}
             ></div>
-            <p className="mt-3 text-gray-500 text-sm">Claude analyseert je CV...</p>
+            <p className="mt-3 text-sm" style={{ color: subTekstKleur }}>Claude analyseert je CV...</p>
           </div>
         )}
 
@@ -515,8 +612,11 @@ function Analyse() {
               <p className="text-sm text-gray-600 mb-4">Ga sectie voor sectie door je CV en laat Claude concrete verbeteringsvoorstellen genereren.</p>
               <button
                 onClick={() => navigate('/keyword-feedback', { state: { analyse, cvTekst, vacatureTekst } })}
-                className="px-8 py-3 text-white font-medium rounded-lg transition-colors"
-                style={{ backgroundColor: branding.primaire_kleur }}
+                className="px-8 py-3 font-medium rounded-lg transition-colors"
+                style={{
+                  backgroundColor: branding.primaire_kleur,
+                  color: primaireTekstKleur
+                }}
               >
                 Verbeter mijn CV per sectie →
               </button>
