@@ -13,13 +13,13 @@ const defaultBranding = {
 
 const BrandingContext = createContext(defaultBranding)
 
-// companyId komt nu als prop binnen — vanuit AuthContext na login
-// Voor admins die wisselen: localStorage override
-export function BrandingProvider({ children, companyId = 'default' }) {
+// companyId komt vanuit AuthContext na login
+// isAdmin: alleen admins mogen via localStorage een andere organisatie kiezen
+export function BrandingProvider({ children, companyId = 'default', isAdmin = false }) {
   const [branding, setBranding] = useState(defaultBranding)
 
-  // Admins kunnen via localStorage een andere organisatie kiezen
-  const effectiefCompanyId = localStorage.getItem('companyId') || companyId
+  // localStorage override alleen toegestaan voor admins
+  const effectiefCompanyId = (isAdmin && localStorage.getItem('companyId')) || companyId
 
   useEffect(() => {
     fetch(`${BACKEND}/branding?companyId=${effectiefCompanyId}`)
