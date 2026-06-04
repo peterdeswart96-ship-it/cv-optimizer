@@ -58,13 +58,16 @@ export function AuthProvider({ children }) {
 
   const getClaims = () => gebruiker?.idTokenClaims || {}
 
-  const companyId = getClaims()['extension_companyId'] ||
-                    getClaims()['companyId'] ||
+  const claims = getClaims()
+  const companyId = (claims['extn.companyId'] && claims['extn.companyId'][0]) ||
+                    claims['extension_companyId'] ||
+                    claims['companyId'] ||
                     localStorage.getItem('companyId') ||
                     'default'
 
-  const rol = getClaims()['extension_rol'] ||
-              getClaims()['rol'] ||
+  const rol = (claims['extn.rol'] && claims['extn.rol'][0]) ||
+              claims['extension_rol'] ||
+              claims['rol'] ||
               'gebruiker'
 
   const isAdmin = rol === 'admin'
