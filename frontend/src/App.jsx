@@ -9,8 +9,8 @@ import LoginScherm from './LoginScherm'
 
 const BACKEND = 'https://func-cv-optimizer-linux.azurewebsites.net/api'
 
-const MAX_CV_TEKENS = 8000
-const MAX_VACATURE_TEKENS = 4000
+const MAX_CV_TEKENS = 12000
+const MAX_VACATURE_TEKENS = 6000
 
 function Header() {
   const { branding } = useBranding()
