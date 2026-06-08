@@ -602,7 +602,6 @@ function Analyse() {
               </div>
             </div>
 
-            {/* Vacature kolom */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-medium" style={{ color: labelKleur }}>
