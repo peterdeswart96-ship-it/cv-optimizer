@@ -1,5 +1,6 @@
 const { app } = require('@azure/functions');
 const Anthropic = require('@anthropic-ai/sdk');
+const { valideerToken } = require('./auth');
 
 const anthropic = new Anthropic({
   apiKey: process.env.CLAUDE_API_KEY
@@ -54,6 +55,20 @@ app.http('analyze', {
     if (request.method === 'OPTIONS') {
       return { status: 204, headers: corsHeaders };
     }
+
+    // ── Token validatie ────────────────────────────────────────────────────
+    try {
+      const gebruiker = await valideerToken(request);
+      context.log('Token geldig voor gebruiker:', gebruiker.preferred_username ?? gebruiker.sub);
+    } catch (err) {
+      context.log('Token validatie mislukt:', err.message);
+      return {
+        status: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Niet geautoriseerd', details: err.message })
+      };
+    }
+    // ──────────────────────────────────────────────────────────────────────
 
     // ── Rate limiting ──────────────────────────────────────────────────────
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim()
