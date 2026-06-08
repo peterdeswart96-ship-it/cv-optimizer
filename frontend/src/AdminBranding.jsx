@@ -1,110 +1,271 @@
-const { app } = require('@azure/functions');
-const { BlobServiceClient } = require('@azure/storage-blob');
+import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useBranding } from './BrandingContext'
+import { useAuth } from './AuthContext'
 
-const STORAGE_CONNECTION = process.env.AZURE_STORAGE_CONNECTION_STRING;
-const CONTAINER = 'branding';
-const TOEGESTAAN_ORIGIN = 'https://cv-optimizer.pdscloud.nl';
+const BACKEND = 'https://func-cv-optimizer-linux.azurewebsites.net/api'
 
-app.http('branding-opslaan', {
-  methods: ['POST', 'OPTIONS'],
-  authLevel: 'anonymous',
-  handler: async (request, context) => {
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': TOEGESTAAN_ORIGIN,
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Content-Type': 'application/json'
-    };
+function isDonker(hex) {
+  if (!hex || !hex.startsWith('#') || hex.length < 7) return false
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return (r * 299 + g * 587 + b * 114) / 1000 < 150
+}
 
-    if (request.method === 'OPTIONS') {
-      return { status: 204, headers: corsHeaders };
+export default function AdminBranding() {
+  const { branding } = useBranding()
+  const { getToken, companyId, isAdmin } = useAuth()
+  const navigate = useNavigate()
+
+  const [bedrijfsnaam, setBedrijfsnaam] = useState(branding.bedrijfsnaam || '')
+  const [welkomsttekst, setWelkomsttekst] = useState(branding.welkomsttekst || '')
+  const [primaireKleur, setPrimaireKleur] = useState(branding.primaire_kleur || '#2563EB')
+  const [achtergrondkleur, setAchtergrondkleur] = useState(branding.achtergrondkleur || '#0A0A0A')
+  const [logoPreview, setLogoPreview] = useState(branding.logo_url || null)
+  const [logoBestand, setLogoBestand] = useState(null)
+  const [footerPreview, setFooterPreview] = useState(branding.footer_url || null)
+  const [footerBestand, setFooterBestand] = useState(null)
+  const [opslaan, setOpslaan] = useState(false)
+  const [bericht, setBericht] = useState(null)
+
+  const logoRef = useRef(null)
+  const footerRef = useRef(null)
+
+  useEffect(() => {
+    if (!isAdmin) navigate('/')
+  }, [isAdmin])
+
+  const handleLogo = (e) => {
+    const bestand = e.target.files[0]
+    if (!bestand) return
+    if (bestand.size > 500 * 1024) {
+      setBericht({ type: 'fout', tekst: 'Logo mag maximaal 500KB zijn.' })
+      return
     }
+    setLogoBestand(bestand)
+    setLogoPreview(URL.createObjectURL(bestand))
+  }
 
+  const handleFooter = (e) => {
+    const bestand = e.target.files[0]
+    if (!bestand) return
+    if (bestand.size > 2 * 1024 * 1024) {
+      setBericht({ type: 'fout', tekst: 'Footerafbeelding mag maximaal 2MB zijn.' })
+      return
+    }
+    setFooterBestand(bestand)
+    setFooterPreview(URL.createObjectURL(bestand))
+  }
+
+  const slaOp = async () => {
+    setOpslaan(true)
+    setBericht(null)
     try {
-      const formData = await request.formData();
-      const companyId = formData.get('companyId');
+      const token = await getToken()
+      const headers = {}
+      if (token) headers['Authorization'] = `Bearer ${token}`
 
-      if (!companyId) {
-        return { status: 400, headers: corsHeaders, body: JSON.stringify({ error: 'companyId ontbreekt' }) };
+      const formData = new FormData()
+      formData.append('companyId', companyId)
+      formData.append('bedrijfsnaam', bedrijfsnaam)
+      formData.append('welkomsttekst', welkomsttekst)
+      formData.append('primaire_kleur', primaireKleur)
+      formData.append('achtergrondkleur', achtergrondkleur)
+      if (logoBestand) formData.append('logo', logoBestand)
+      if (footerBestand) formData.append('footer', footerBestand)
+
+      const res = await fetch(`${BACKEND}/branding-opslaan`, {
+        method: 'POST',
+        headers,
+        body: formData
+      })
+      const data = await res.json()
+      if (data.success) {
+        setBericht({ type: 'succes', tekst: 'Branding opgeslagen! Pagina wordt herladen...' })
+        setTimeout(() => window.location.reload(), 1500)
+      } else {
+        setBericht({ type: 'fout', tekst: data.error || 'Opslaan mislukt' })
       }
-
-      const blobService = BlobServiceClient.fromConnectionString(STORAGE_CONNECTION);
-      const container = blobService.getContainerClient(CONTAINER);
-
-      // Lees bestaande branding op als basis
-      let bestaandeBranding = {};
-      try {
-        const bestaandBlob = container.getBlobClient(`${companyId}.json`);
-        const download = await bestaandBlob.download();
-        const chunks = [];
-        for await (const chunk of download.readableStreamBody) chunks.push(chunk);
-        bestaandeBranding = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
-      } catch {
-        // Geen bestaande branding — begin met lege config
-      }
-
-      // Logo uploaden indien aanwezig
-      let logoUrl = bestaandeBranding.logo_url || null;
-      const logoBestand = formData.get('logo');
-      if (logoBestand && logoBestand.size > 0) {
-        const logoBuffer = Buffer.from(await logoBestand.arrayBuffer());
-        const logoExtensie = logoBestand.name.split('.').pop().toLowerCase();
-        const logoBlobNaam = `${companyId}-logo.${logoExtensie}`;
-        const logoBlob = container.getBlockBlobClient(logoBlobNaam);
-        const contentType = logoExtensie === 'svg' ? 'image/svg+xml' : 'image/png';
-        await logoBlob.upload(logoBuffer, logoBuffer.length, {
-          blobHTTPHeaders: { blobContentType: contentType }
-        });
-        logoUrl = `https://stcvoptimizer.blob.core.windows.net/${CONTAINER}/${logoBlobNaam}`;
-      }
-
-      // Footer uploaden indien aanwezig
-      let footerUrl = bestaandeBranding.footer_url || null;
-      const footerBestand = formData.get('footer');
-      if (footerBestand && footerBestand.size > 0) {
-        const footerBuffer = Buffer.from(await footerBestand.arrayBuffer());
-        const footerExtensie = footerBestand.name.split('.').pop().toLowerCase();
-        const footerBlobNaam = `${companyId}-footer.${footerExtensie}`;
-        const footerBlob = container.getBlockBlobClient(footerBlobNaam);
-        await footerBlob.upload(footerBuffer, footerBuffer.length, {
-          blobHTTPHeaders: { blobContentType: `image/${footerExtensie}` }
-        });
-        footerUrl = `https://stcvoptimizer.blob.core.windows.net/${CONTAINER}/${footerBlobNaam}`;
-      }
-
-      // Nieuwe branding JSON samenstellen
-      const nieuweBranding = {
-        companyId,
-        bedrijfsnaam: formData.get('bedrijfsnaam') || bestaandeBranding.bedrijfsnaam || '',
-        welkomsttekst: formData.get('welkomsttekst') || bestaandeBranding.welkomsttekst || '',
-        primaire_kleur: formData.get('primaire_kleur') || bestaandeBranding.primaire_kleur || '#2563EB',
-        achtergrondkleur: formData.get('achtergrondkleur') || bestaandeBranding.achtergrondkleur || '#0A0A0A',
-        logo_url: logoUrl,
-        footer_url: footerUrl
-      };
-
-      // JSON opslaan
-      const jsonInhoud = JSON.stringify(nieuweBranding, null, 2);
-      const jsonBlob = container.getBlockBlobClient(`${companyId}.json`);
-      await jsonBlob.upload(jsonInhoud, Buffer.byteLength(jsonInhoud), {
-        blobHTTPHeaders: { blobContentType: 'application/json' },
-        conditions: {}
-      });
-
-      context.log(`Branding opgeslagen voor: ${companyId}`);
-      return {
-        status: 200,
-        headers: corsHeaders,
-        body: JSON.stringify({ success: true })
-      };
-
-    } catch (error) {
-      context.log('Fout bij opslaan branding:', error.message);
-      return {
-        status: 500,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Kon branding niet opslaan', details: error.message })
-      };
+    } catch {
+      setBericht({ type: 'fout', tekst: 'Fout bij opslaan' })
+    } finally {
+      setOpslaan(false)
     }
   }
-});
+
+  const primaireTekstKleur = isDonker(primaireKleur) ? '#FFFFFF' : '#111827'
+
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: achtergrondkleur }}>
+
+      {/* Preview header */}
+      <div className="px-6 py-4 flex items-center gap-4" style={{ backgroundColor: primaireKleur }}>
+        {logoPreview && (
+          <img src={logoPreview} alt="Logo preview" className="h-10 object-contain" />
+        )}
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: primaireTekstKleur }}>
+            {bedrijfsnaam || 'Bedrijfsnaam'}
+          </h1>
+          <p className="text-sm opacity-80" style={{ color: primaireTekstKleur }}>
+            {welkomsttekst || 'Welkomsttekst'}
+          </p>
+        </div>
+        <div className="ml-auto">
+          <button
+            onClick={() => navigate('/')}
+            className="px-3 py-1 text-sm rounded"
+            style={{ backgroundColor: 'rgba(255,255,255,0.2)', color: primaireTekstKleur }}
+          >
+            ← Terug
+          </button>
+        </div>
+      </div>
+
+      {/* Formulier */}
+      <div className="max-w-2xl mx-auto px-6 py-8 space-y-6">
+        <h2 className="text-xl font-semibold" style={{ color: isDonker(achtergrondkleur) ? '#F9FAFB' : '#111827' }}>
+          🎨 Huisstijl beheren
+        </h2>
+
+        {bericht && (
+          <div className={`p-4 rounded-lg text-sm ${bericht.type === 'succes' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+            {bericht.tekst}
+          </div>
+        )}
+
+        {/* Bedrijfsnaam */}
+        <div>
+          <label className="block text-sm font-medium mb-1" style={{ color: isDonker(achtergrondkleur) ? '#F9FAFB' : '#374151' }}>
+            Bedrijfsnaam
+          </label>
+          <input
+            type="text"
+            value={bedrijfsnaam}
+            onChange={(e) => setBedrijfsnaam(e.target.value)}
+            className="w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            style={{ backgroundColor: isDonker(achtergrondkleur) ? '#1F2937' : '#FFFFFF', color: isDonker(achtergrondkleur) ? '#F9FAFB' : '#111827', borderColor: isDonker(achtergrondkleur) ? '#374151' : '#D1D5DB' }}
+          />
+        </div>
+
+        {/* Welkomsttekst */}
+        <div>
+          <label className="block text-sm font-medium mb-1" style={{ color: isDonker(achtergrondkleur) ? '#F9FAFB' : '#374151' }}>
+            Welkomsttekst
+          </label>
+          <input
+            type="text"
+            value={welkomsttekst}
+            onChange={(e) => setWelkomsttekst(e.target.value)}
+            className="w-full text-sm border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            style={{ backgroundColor: isDonker(achtergrondkleur) ? '#1F2937' : '#FFFFFF', color: isDonker(achtergrondkleur) ? '#F9FAFB' : '#111827', borderColor: isDonker(achtergrondkleur) ? '#374151' : '#D1D5DB' }}
+          />
+        </div>
+
+        {/* Kleuren */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: isDonker(achtergrondkleur) ? '#F9FAFB' : '#374151' }}>
+              Headerbalk kleur
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={primaireKleur}
+                onChange={(e) => setPrimaireKleur(e.target.value)}
+                className="w-10 h-10 rounded cursor-pointer border-0"
+              />
+              <input
+                type="text"
+                value={primaireKleur}
+                onChange={(e) => setPrimaireKleur(e.target.value)}
+                className="flex-1 text-sm border rounded-lg px-3 py-2 focus:outline-none font-mono"
+                style={{ backgroundColor: isDonker(achtergrondkleur) ? '#1F2937' : '#FFFFFF', color: isDonker(achtergrondkleur) ? '#F9FAFB' : '#111827', borderColor: isDonker(achtergrondkleur) ? '#374151' : '#D1D5DB' }}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1" style={{ color: isDonker(achtergrondkleur) ? '#F9FAFB' : '#374151' }}>
+              Achtergrondkleur
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={achtergrondkleur}
+                onChange={(e) => setAchtergrondkleur(e.target.value)}
+                className="w-10 h-10 rounded cursor-pointer border-0"
+              />
+              <input
+                type="text"
+                value={achtergrondkleur}
+                onChange={(e) => setAchtergrondkleur(e.target.value)}
+                className="flex-1 text-sm border rounded-lg px-3 py-2 focus:outline-none font-mono"
+                style={{ backgroundColor: isDonker(achtergrondkleur) ? '#1F2937' : '#FFFFFF', color: isDonker(achtergrondkleur) ? '#F9FAFB' : '#111827', borderColor: isDonker(achtergrondkleur) ? '#374151' : '#D1D5DB' }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Logo upload */}
+        <div>
+          <label className="block text-sm font-medium mb-1" style={{ color: isDonker(achtergrondkleur) ? '#F9FAFB' : '#374151' }}>
+            Logo (SVG of PNG transparant, max 500KB)
+          </label>
+          <div className="flex items-center gap-4">
+            {logoPreview && (
+              <img src={logoPreview} alt="Logo" className="h-12 object-contain rounded border border-gray-200 p-1 bg-white" />
+            )}
+            <button
+              onClick={() => logoRef.current?.click()}
+              className="px-4 py-2 text-sm border rounded-lg transition-colors"
+              style={{ borderColor: primaireKleur, color: isDonker(achtergrondkleur) ? '#F9FAFB' : primaireKleur, backgroundColor: 'transparent' }}
+            >
+              📁 Kies logo
+            </button>
+            <input ref={logoRef} type="file" accept=".svg,.png" className="hidden" onChange={handleLogo} />
+          </div>
+        </div>
+
+        {/* Footer upload */}
+        <div>
+          <label className="block text-sm font-medium mb-1" style={{ color: isDonker(achtergrondkleur) ? '#F9FAFB' : '#374151' }}>
+            Footer afbeelding (hoge resolutie, max 2MB)
+          </label>
+          <div className="flex items-center gap-4">
+            {footerPreview && (
+              <img src={footerPreview} alt="Footer" className="h-12 object-contain rounded border border-gray-200" />
+            )}
+            <button
+              onClick={() => footerRef.current?.click()}
+              className="px-4 py-2 text-sm border rounded-lg transition-colors"
+              style={{ borderColor: primaireKleur, color: isDonker(achtergrondkleur) ? '#F9FAFB' : primaireKleur, backgroundColor: 'transparent' }}
+            >
+              📁 Kies footer afbeelding
+            </button>
+            <input ref={footerRef} type="file" accept=".png,.jpg,.jpeg,.svg" className="hidden" onChange={handleFooter} />
+          </div>
+        </div>
+
+        {/* Footer preview */}
+        {footerPreview && (
+          <div className="rounded-lg overflow-hidden border border-gray-200">
+            <img src={footerPreview} alt="Footer preview" className="w-full object-cover max-h-32" />
+          </div>
+        )}
+
+        {/* Opslaan knop */}
+        <div className="flex justify-end pt-2">
+          <button
+            onClick={slaOp}
+            disabled={opslaan}
+            className="px-8 py-3 font-medium rounded-lg disabled:opacity-50 transition-colors"
+            style={{ backgroundColor: primaireKleur, color: primaireTekstKleur }}
+          >
+            {opslaan ? 'Opslaan...' : '💾 Branding opslaan'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
