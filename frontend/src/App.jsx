@@ -543,14 +543,14 @@ function Analyse() {
                 <label className="block text-sm font-medium" style={{ color: labelKleur }}>
                   Jouw CV
                 </label>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap justify-end">
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadLoading}
-                    className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg transition-colors disabled:opacity-50"
+                    className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
                     style={{ borderColor: knopBorderKleur, color: knopTekstKleur, backgroundColor: 'transparent' }}
                   >
-                    {uploadLoading ? 'Laden...' : '📎 Upload een CV (DOCX of PDF)'}
+                    {uploadLoading ? 'Laden...' : '📎 Upload CV'}
                   </button>
                   <input
                     ref={fileInputRef}
@@ -561,7 +561,7 @@ function Analyse() {
                   />
                   <button
                     onClick={() => setToonFavorieten(true)}
-                    className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg transition-colors"
+                    className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg transition-colors whitespace-nowrap"
                     style={{
                       borderColor: branding.primaire_kleur,
                       color: isDonker(branding.achtergrondkleur) ? '#F9FAFB' : branding.primaire_kleur,
@@ -602,6 +602,7 @@ function Analyse() {
               </div>
             </div>
 
+            {/* Vacature kolom */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-medium" style={{ color: labelKleur }}>
@@ -610,7 +611,7 @@ function Analyse() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setToonVacatureFavorieten(true)}
-                    className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg transition-colors"
+                    className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg transition-colors whitespace-nowrap"
                     style={{
                       borderColor: branding.primaire_kleur,
                       color: isDonker(branding.achtergrondkleur) ? '#F9FAFB' : branding.primaire_kleur,
