@@ -99,13 +99,26 @@ function OrganisatieSelector() {
     window.location.reload()
   }
 
+  const { branding } = useBranding()
+  const orgBalkKleur = branding.organisatiebalk_kleur || '#FFFFFF'
+  const orgTekstKleur = isDonker(orgBalkKleur) ? '#F9FAFB' : '#374151'
+  const orgBorderKleur = isDonker(orgBalkKleur) ? '#374151' : '#F3F4F6'
+
   return (
-    <div className="flex items-center gap-2 px-6 py-2 bg-white border-b border-gray-100">
-      <label className="text-xs text-gray-500">Organisatie (admin):</label>
+    <div
+      className="flex items-center gap-2 px-6 py-2 border-b"
+      style={{ backgroundColor: orgBalkKleur, borderColor: orgBorderKleur }}
+    >
+      <label className="text-xs" style={{ color: orgTekstKleur }}>Organisatie (admin):</label>
       <select
         value={gekozenId}
         onChange={handleChange}
-        className="text-xs border border-gray-200 rounded px-2 py-1 text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="text-xs border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        style={{
+          backgroundColor: isDonker(orgBalkKleur) ? '#1F2937' : '#FFFFFF',
+          color: isDonker(orgBalkKleur) ? '#F9FAFB' : '#374151',
+          borderColor: isDonker(orgBalkKleur) ? '#4B5563' : '#D1D5DB'
+        }}
       >
         <option value="default">Standaard CV Optimizer</option>
         {organisaties.map(org => (
