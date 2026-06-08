@@ -13,5 +13,5 @@ export const msalConfig = {
 }
 
 export const loginRequest = {
-  scopes: ['openid', 'profile', 'email']
+  scopes: ['openid', 'profile', 'email', `${import.meta.env.VITE_ENTRA_CLIENT_ID}/.default`]
 }
