@@ -234,7 +234,7 @@ export default function AdminBranding() {
         {/* Logo upload */}
         <div>
           <label className="block text-sm font-medium mb-1" style={{ color: isDonker(achtergrondkleur) ? '#F9FAFB' : '#374151' }}>
-            Logo (SVG of PNG transparant, max 500KB)
+            Logo
           </label>
           <div className="flex items-center gap-4">
             {logoPreview && (
@@ -249,12 +249,15 @@ export default function AdminBranding() {
             </button>
             <input ref={logoRef} type="file" accept=".svg,.png" className="hidden" onChange={handleLogo} />
           </div>
+          <p className="text-xs mt-2" style={{ color: isDonker(achtergrondkleur) ? '#9CA3AF' : '#6B7280' }}>
+            Aanbevolen: <strong>SVG</strong> (oneindig schaalbaar) of <strong>PNG met transparante achtergrond</strong> · Minimaal 400×400px · Max 500KB
+          </p>
         </div>
 
         {/* Footer upload */}
         <div>
           <label className="block text-sm font-medium mb-1" style={{ color: isDonker(achtergrondkleur) ? '#F9FAFB' : '#374151' }}>
-            Footer afbeelding (hoge resolutie, max 2MB)
+            Footer afbeelding
           </label>
           <div className="flex items-center gap-4">
             {footerPreview && (
@@ -269,6 +272,9 @@ export default function AdminBranding() {
             </button>
             <input ref={footerRef} type="file" accept=".png,.jpg,.jpeg,.svg" className="hidden" onChange={handleFooter} />
           </div>
+          <p className="text-xs mt-2" style={{ color: isDonker(achtergrondkleur) ? '#9CA3AF' : '#6B7280' }}>
+            Aanbevolen: <strong>JPG</strong> voor foto's, <strong>PNG</strong> voor transparantie · Resolutie 1920×300px · Max 2MB
+          </p>
         </div>
 
         {/* Footer preview */}
