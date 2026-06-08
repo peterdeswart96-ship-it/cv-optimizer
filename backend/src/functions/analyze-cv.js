@@ -4,9 +4,9 @@ const Anthropic = require('@anthropic-ai/sdk');
 const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://cv-optimizer.pdscloud.nl',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Content-Type': 'application/json'
 };
 

@@ -13,8 +13,6 @@ const BACKEND = 'https://func-cv-optimizer-linux.azurewebsites.net/api'
 const MAX_CV_TEKENS = 12000
 const MAX_VACATURE_TEKENS = 6000
 
-// Bepaal of een kleur donker is
-// Drempel 150 (WCAG-aanbeveling) — hogere drempel = meer kleuren krijgen witte tekst
 function isDonker(hex) {
   if (!hex || !hex.startsWith('#') || hex.length < 7) return false
   const r = parseInt(hex.slice(1, 3), 16)
@@ -108,6 +106,7 @@ function OrganisatieSelector() {
   )
 }
 
+// ─── CV Favorieten Panel ──────────────────────────────────────────────────────
 function FavorietenPanel({ onSelecteer, cvTekst, onSluiten }) {
   const { gebruiker, getToken } = useAuth()
   const { branding } = useBranding()
@@ -119,9 +118,7 @@ function FavorietenPanel({ onSelecteer, cvTekst, onSluiten }) {
 
   const gebruikerId = gebruiker?.localAccountId || gebruiker?.homeAccountId?.split('.')[0] || 'onbekend'
 
-  useEffect(() => {
-    laadCvs()
-  }, [])
+  useEffect(() => { laadCvs() }, [])
 
   const laadCvs = async () => {
     setLoading(true)
@@ -181,9 +178,7 @@ function FavorietenPanel({ onSelecteer, cvTekst, onSluiten }) {
     }
   }
 
-  const formatDatum = (iso) => {
-    return new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
-  }
+  const formatDatum = (iso) => new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -193,7 +188,6 @@ function FavorietenPanel({ onSelecteer, cvTekst, onSluiten }) {
           <h2 className="text-lg font-semibold text-white">Mijn opgeslagen CV's</h2>
           <button onClick={onSluiten} className="text-white opacity-80 hover:opacity-100 text-xl">✕</button>
         </div>
-
         <div className="p-6">
           {cvTekst && (
             <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
@@ -211,10 +205,7 @@ function FavorietenPanel({ onSelecteer, cvTekst, onSluiten }) {
                   onClick={slaOp}
                   disabled={opslaanBezig || !opslaanNaam.trim()}
                   className="px-4 py-2 text-sm rounded disabled:opacity-50 transition-colors"
-                  style={{
-                    backgroundColor: branding.primaire_kleur,
-                    color: isDonker(branding.primaire_kleur) ? '#FFFFFF' : '#111827'
-                  }}
+                  style={{ backgroundColor: branding.primaire_kleur, color: isDonker(branding.primaire_kleur) ? '#FFFFFF' : '#111827' }}
                 >
                   {opslaanBezig ? '...' : 'Opslaan'}
                 </button>
@@ -222,13 +213,11 @@ function FavorietenPanel({ onSelecteer, cvTekst, onSluiten }) {
               <p className="text-xs text-gray-400 mt-1">Max 5 CV's per account</p>
             </div>
           )}
-
           {bericht && (
             <div className={`mb-4 p-3 rounded-lg text-sm ${bericht.type === 'succes' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
               {bericht.tekst}
             </div>
           )}
-
           {loading ? (
             <p className="text-sm text-gray-400 text-center py-4">Laden...</p>
           ) : cvs.length === 0 ? (
@@ -246,15 +235,162 @@ function FavorietenPanel({ onSelecteer, cvTekst, onSluiten }) {
                     <button
                       onClick={() => { onSelecteer(cv.tekst); onSluiten() }}
                       className="px-3 py-1 text-xs rounded transition-colors"
-                      style={{
-                        backgroundColor: branding.primaire_kleur,
-                        color: isDonker(branding.primaire_kleur) ? '#FFFFFF' : '#111827'
-                      }}
+                      style={{ backgroundColor: branding.primaire_kleur, color: isDonker(branding.primaire_kleur) ? '#FFFFFF' : '#111827' }}
                     >
                       Gebruiken
                     </button>
                     <button
                       onClick={() => verwijder(cv.blob_naam)}
+                      className="px-3 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50 transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Vacature Favorieten Panel ────────────────────────────────────────────────
+function VacatureFavorietenPanel({ onSelecteer, vacatureTekst, onSluiten }) {
+  const { gebruiker, getToken } = useAuth()
+  const { branding } = useBranding()
+  const [vacatures, setVacatures] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [opslaanNaam, setOpslaanNaam] = useState('')
+  const [opslaanBezig, setOpslaanBezig] = useState(false)
+  const [bericht, setBericht] = useState(null)
+
+  const gebruikerId = gebruiker?.localAccountId || gebruiker?.homeAccountId?.split('.')[0] || 'onbekend'
+
+  useEffect(() => { laadVacatures() }, [])
+
+  const laadVacatures = async () => {
+    setLoading(true)
+    try {
+      const token = await getToken()
+      const headers = {}
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      const res = await fetch(`${BACKEND}/vacature-lijst?gebruiker_id=${gebruikerId}`, { headers })
+      const data = await res.json()
+      setVacatures(Array.isArray(data) ? data : [])
+    } catch {
+      setVacatures([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const verwijder = async (blobNaam) => {
+    if (!window.confirm('Vacature verwijderen?')) return
+    try {
+      const token = await getToken()
+      const headers = {}
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      await fetch(`${BACKEND}/vacature-lijst?gebruiker_id=${gebruikerId}&blob_naam=${encodeURIComponent(blobNaam)}`, {
+        method: 'DELETE', headers
+      })
+      await laadVacatures()
+      setBericht({ type: 'succes', tekst: 'Vacature verwijderd' })
+    } catch {
+      setBericht({ type: 'fout', tekst: 'Kon vacature niet verwijderen' })
+    }
+  }
+
+  const slaOp = async () => {
+    if (!vacatureTekst || !opslaanNaam.trim()) return
+    setOpslaanBezig(true)
+    try {
+      const token = await getToken()
+      const headers = { 'Content-Type': 'application/json' }
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      const res = await fetch(`${BACKEND}/vacature-opslaan`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ vacature_tekst: vacatureTekst, vacature_naam: opslaanNaam.trim(), gebruiker_id: gebruikerId })
+      })
+      const data = await res.json()
+      if (data.success) {
+        setBericht({ type: 'succes', tekst: 'Vacature opgeslagen!' })
+        setOpslaanNaam('')
+        await laadVacatures()
+      } else {
+        setBericht({ type: 'fout', tekst: data.error || 'Kon vacature niet opslaan' })
+      }
+    } catch {
+      setBericht({ type: 'fout', tekst: 'Fout bij opslaan' })
+    } finally {
+      setOpslaanBezig(false)
+    }
+  }
+
+  const formatDatum = (iso) => new Date(iso).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-screen overflow-y-auto">
+        <div className="p-6 border-b border-gray-100 flex items-center justify-between"
+          style={{ backgroundColor: branding.primaire_kleur }}>
+          <h2 className="text-lg font-semibold text-white">Mijn opgeslagen vacatures</h2>
+          <button onClick={onSluiten} className="text-white opacity-80 hover:opacity-100 text-xl">✕</button>
+        </div>
+        <div className="p-6">
+          {vacatureTekst && (
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <p className="text-sm font-medium text-gray-700 mb-2">Huidige vacature opslaan</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Naam voor deze vacature..."
+                  value={opslaanNaam}
+                  onChange={(e) => setOpslaanNaam(e.target.value)}
+                  className="flex-1 text-sm border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onKeyDown={(e) => e.key === 'Enter' && slaOp()}
+                />
+                <button
+                  onClick={slaOp}
+                  disabled={opslaanBezig || !opslaanNaam.trim()}
+                  className="px-4 py-2 text-sm rounded disabled:opacity-50 transition-colors"
+                  style={{ backgroundColor: branding.primaire_kleur, color: isDonker(branding.primaire_kleur) ? '#FFFFFF' : '#111827' }}
+                >
+                  {opslaanBezig ? '...' : 'Opslaan'}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Max 5 vacatures per account</p>
+            </div>
+          )}
+          {bericht && (
+            <div className={`mb-4 p-3 rounded-lg text-sm ${bericht.type === 'succes' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+              {bericht.tekst}
+            </div>
+          )}
+          {loading ? (
+            <p className="text-sm text-gray-400 text-center py-4">Laden...</p>
+          ) : vacatures.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-4">Nog geen vacatures opgeslagen</p>
+          ) : (
+            <div className="space-y-2">
+              {vacatures.map((vac) => (
+                <div key={vac.blob_naam}
+                  className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{vac.naam}</p>
+                    <p className="text-xs text-gray-400">{formatDatum(vac.opgeslagen_op)} · {vac.tekst.length.toLocaleString()} tekens</p>
+                  </div>
+                  <div className="flex gap-2 ml-3">
+                    <button
+                      onClick={() => { onSelecteer(vac.tekst); onSluiten() }}
+                      className="px-3 py-1 text-xs rounded transition-colors"
+                      style={{ backgroundColor: branding.primaire_kleur, color: isDonker(branding.primaire_kleur) ? '#FFFFFF' : '#111827' }}
+                    >
+                      Gebruiken
+                    </button>
+                    <button
+                      onClick={() => verwijder(vac.blob_naam)}
                       className="px-3 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50 transition-colors"
                     >
                       ✕
@@ -278,8 +414,11 @@ function Analyse() {
   const [uploadLoading, setUploadLoading] = useState(false)
   const [toonOpslaanKnop, setToonOpslaanKnop] = useState(false)
   const [knipperend, setKnipperend] = useState(false)
+  const [toonVacatureOpslaanKnop, setToonVacatureOpslaanKnop] = useState(false)
+  const [vacatureKnipperend, setVacatureKnipperend] = useState(false)
   const [fout, setFout] = useState(null)
   const [toonFavorieten, setToonFavorieten] = useState(false)
+  const [toonVacatureFavorieten, setToonVacatureFavorieten] = useState(false)
   const fileInputRef = useRef(null)
   const navigate = useNavigate()
   const { branding } = useBranding()
@@ -295,6 +434,12 @@ function Analyse() {
     setToonOpslaanKnop(true)
     setKnipperend(true)
     setTimeout(() => setKnipperend(false), 4000)
+  }
+
+  const toonVacatureOpslaanMelding = () => {
+    setToonVacatureOpslaanKnop(true)
+    setVacatureKnipperend(true)
+    setTimeout(() => setVacatureKnipperend(false), 4000)
   }
 
   const uploadCv = async (bestand) => {
@@ -329,25 +474,20 @@ function Analyse() {
       setFout(`De vacaturetekst is te lang (${vacatureTekst.length} tekens). Het maximum is ${MAX_VACATURE_TEKENS} tekens.`)
       return
     }
-
     setLoading(true)
     setFout(null)
     setAnalyse(null)
-
     try {
       const token = await getToken()
       const headers = { 'Content-Type': 'application/json' }
       if (token) headers['Authorization'] = `Bearer ${token}`
-
       const response = await fetch(`${BACKEND}/analyze`, {
         method: 'POST', headers,
         body: JSON.stringify({ cv_tekst: cvTekst, vacature_tekst: vacatureTekst })
       })
-
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Er ging iets mis')
       setAnalyse(data)
-
     } catch (err) {
       if (err instanceof SyntaxError) {
         setFout('De analyse is mislukt omdat de tekst te lang is. Verkort je CV of vacature en probeer opnieuw.')
@@ -384,10 +524,20 @@ function Analyse() {
         />
       )}
 
+      {toonVacatureFavorieten && (
+        <VacatureFavorietenPanel
+          vacatureTekst={vacatureTekst}
+          onSelecteer={(tekst) => setVacatureTekst(tekst)}
+          onSluiten={() => setToonVacatureFavorieten(false)}
+        />
+      )}
+
       <div className="max-w-5xl mx-auto px-6 py-8">
 
         {!analyse && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            {/* CV kolom */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-medium" style={{ color: labelKleur }}>
@@ -398,11 +548,7 @@ function Analyse() {
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadLoading}
                     className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg transition-colors disabled:opacity-50"
-                    style={{
-                      borderColor: knopBorderKleur,
-                      color: knopTekstKleur,
-                      backgroundColor: 'transparent'
-                    }}
+                    style={{ borderColor: knopBorderKleur, color: knopTekstKleur, backgroundColor: 'transparent' }}
                   >
                     {uploadLoading ? 'Laden...' : '📎 Upload een CV (DOCX of PDF)'}
                   </button>
@@ -457,9 +603,24 @@ function Analyse() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: labelKleur }}>
-                Vacature
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium" style={{ color: labelKleur }}>
+                  Vacature
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setToonVacatureFavorieten(true)}
+                    className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg transition-colors"
+                    style={{
+                      borderColor: branding.primaire_kleur,
+                      color: isDonker(branding.achtergrondkleur) ? '#F9FAFB' : branding.primaire_kleur,
+                      backgroundColor: isDonker(branding.achtergrondkleur) ? `${branding.primaire_kleur}33` : 'transparent'
+                    }}
+                  >
+                    ⭐ Opgeslagen vacatures
+                  </button>
+                </div>
+              </div>
               <textarea
                 className="w-full h-64 p-3 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 style={{
@@ -469,11 +630,25 @@ function Analyse() {
                 }}
                 placeholder="Plak hier de vacaturetekst..."
                 value={vacatureTekst}
-                onChange={(e) => setVacatureTekst(e.target.value)}
+                onChange={(e) => {
+                  setVacatureTekst(e.target.value)
+                  if (e.target.value.length > 100 && !toonVacatureOpslaanKnop) toonVacatureOpslaanMelding()
+                }}
               />
-              <p className="text-xs mt-1 text-right" style={{ color: vacatureTekst.length > MAX_VACATURE_TEKENS ? '#F87171' : subTekstKleur }}>
-                {vacatureTekst.length} / {MAX_VACATURE_TEKENS} tekens
-              </p>
+              <div className="flex items-center justify-between mt-1">
+                <p className="text-xs mt-1 text-right w-full" style={{ color: vacatureTekst.length > MAX_VACATURE_TEKENS ? '#F87171' : subTekstKleur }}>
+                  {vacatureTekst.length} / {MAX_VACATURE_TEKENS} tekens
+                </p>
+                {toonVacatureOpslaanKnop && vacatureTekst && (
+                  <button
+                    onClick={() => { setToonVacatureFavorieten(true); setToonVacatureOpslaanKnop(false) }}
+                    className={`text-xs px-3 py-1 rounded-lg font-medium transition-all whitespace-nowrap ${vacatureKnipperend ? 'animate-pulse' : ''}`}
+                    style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
+                  >
+                    ⭐ Opslaan als favoriet
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
