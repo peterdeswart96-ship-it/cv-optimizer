@@ -5,3 +5,8 @@ require('./src/functions/organisaties');
 require('./src/functions/branding');
 require('./src/functions/cv-opslaan');
 require('./src/functions/cv-lijst');
+require('./src/functions/analyze-cv');
+require('./src/functions/analyze-section');
+require('./src/functions/extract');
+require('./src/functions/vacature-opslaan');
+require('./src/functions/vacature-lijst');
