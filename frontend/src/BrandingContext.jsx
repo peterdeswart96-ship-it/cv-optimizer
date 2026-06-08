@@ -7,8 +7,8 @@ const defaultBranding = {
   bedrijfsnaam: 'CV Optimizer',
   welkomsttekst: 'Analyseer je CV ten opzichte van een vacature',
   logo_url: null,
-  primaire_kleur: '#6366F1',
-  achtergrondkleur: '#F8FAFC'
+  primaire_kleur: '#111827',
+  achtergrondkleur: '#0A0A0A'
 }
 
 const BrandingContext = createContext(defaultBranding)
