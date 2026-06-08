@@ -3,7 +3,6 @@ import { PublicClientApplication } from '@azure/msal-browser'
 import { msalConfig, loginRequest } from './authConfig'
 
 const msalInstance = new PublicClientApplication(msalConfig)
-
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
@@ -16,7 +15,6 @@ export function AuthProvider({ children }) {
       if (accounts.length > 0) {
         setGebruiker(accounts[0])
       }
-
       msalInstance.handleRedirectPromise().then(response => {
         if (response?.account) {
           setGebruiker(response.account)
@@ -38,8 +36,10 @@ export function AuthProvider({ children }) {
   }
 
   const uitloggen = async () => {
-    await msalInstance.logoutRedirect()
+    // localStorage clearen bij uitloggen — voorkomt verkeerde branding bij volgende gebruiker
+    localStorage.removeItem('companyId')
     setGebruiker(null)
+    await msalInstance.logoutRedirect()
   }
 
   const getToken = async () => {
@@ -57,12 +57,12 @@ export function AuthProvider({ children }) {
   }
 
   const getClaims = () => gebruiker?.idTokenClaims || {}
-
   const claims = getClaims()
+
+  // companyId uit JWT claim — localStorage alleen als fallback voor admins
   const companyId = (claims['extn.companyId'] && claims['extn.companyId'][0]) ||
                     claims['extension_companyId'] ||
                     claims['companyId'] ||
-                    localStorage.getItem('companyId') ||
                     'default'
 
   const rol = (claims['extn.rol'] && claims['extn.rol'][0]) ||
