@@ -542,13 +542,6 @@ function Analyse() {
         />
       )}
 
-      {/* Footer afbeelding */}
-      {branding.footer_url && (
-        <div className="fixed bottom-0 left-0 right-0 z-10 pointer-events-none">
-          <img src={branding.footer_url} alt="Footer" className="w-full object-cover max-h-24 opacity-80" />
-        </div>
-      )}
-
       <div className="max-w-5xl mx-auto px-6 py-8">
 
         {!analyse && (
@@ -779,6 +772,13 @@ function Analyse() {
           </div>
         )}
       </div>
+
+      {/* Footer afbeelding */}
+      {branding.footer_url && (
+        <div className="w-full mt-8">
+          <img src={branding.footer_url} alt="Footer" className="w-full object-cover max-h-48" />
+        </div>
+      )}
     </div>
   )
 }
