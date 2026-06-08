@@ -5,32 +5,30 @@ const anthropic = new Anthropic({
   apiKey: process.env.CLAUDE_API_KEY
 });
 
-// Rate limiting: max 10 aanroepen per uur per IP-adres
-// Map-structuur: { ip: { count: number, resetTime: timestamp } }
+// ─── Rate limiter ────────────────────────────────────────────────────────────
 const rateLimitMap = new Map();
 const RATE_LIMIT_MAX = 10;
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 uur in milliseconden
+const RATE_LIMIT_VENSTER_MS = 60 * 60 * 1000;
 
 function checkRateLimit(ip) {
-  const now = Date.now();
+  const nu = Date.now();
   const entry = rateLimitMap.get(ip);
 
-  if (!entry || now > entry.resetTime) {
-    // Eerste aanroep van dit IP, of het tijdvenster is verlopen — reset
-    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
-    return { allowed: true, remaining: RATE_LIMIT_MAX - 1 };
+  if (!entry || nu > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: nu + RATE_LIMIT_VENSTER_MS });
+    return { toegestaan: true, resterend: RATE_LIMIT_MAX - 1 };
   }
 
   if (entry.count >= RATE_LIMIT_MAX) {
-    // Limiet bereikt
-    const minutesLeft = Math.ceil((entry.resetTime - now) / 60000);
-    return { allowed: false, remaining: 0, minutesLeft };
+    const resetOverMs = entry.resetAt - nu;
+    const resetOverMin = Math.ceil(resetOverMs / 60000);
+    return { toegestaan: false, resetOverMin };
   }
 
-  // Nog binnen limiet — teller ophogen
-  entry.count++;
-  return { allowed: true, remaining: RATE_LIMIT_MAX - entry.count };
+  entry.count += 1;
+  return { toegestaan: true, resterend: RATE_LIMIT_MAX - entry.count };
 }
+// ─────────────────────────────────────────────────────────────────────────────
 
 function stripMarkdown(text) {
   return text
@@ -40,14 +38,16 @@ function stripMarkdown(text) {
     .trim();
 }
 
+const TOEGESTAAN_ORIGIN = 'https://cv-optimizer.pdscloud.nl';
+
 app.http('analyze', {
   methods: ['POST', 'OPTIONS'],
   authLevel: 'anonymous',
   handler: async (request, context) => {
     const corsHeaders = {
-      'Access-Control-Allow-Origin': 'https://cv-optimizer.pdscloud.nl',
+      'Access-Control-Allow-Origin': TOEGESTAAN_ORIGIN,
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Content-Type': 'application/json'
     };
 
@@ -55,23 +55,27 @@ app.http('analyze', {
       return { status: 204, headers: corsHeaders };
     }
 
-    // IP-adres ophalen (Azure stuurt dit via de x-forwarded-for header)
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    const rateCheck = checkRateLimit(ip);
+    // ── Rate limiting ──────────────────────────────────────────────────────
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim()
+               ?? request.headers.get('client-ip')
+               ?? 'onbekend';
 
-    if (!rateCheck.allowed) {
+    const limiet = checkRateLimit(ip);
+    if (!limiet.toegestaan) {
       context.log(`Rate limit bereikt voor IP: ${ip}`);
       return {
         status: 429,
-        headers: corsHeaders,
+        headers: {
+          ...corsHeaders,
+          'Retry-After': String(limiet.resetOverMin * 60)
+        },
         body: JSON.stringify({
-          error: `Te veel aanvragen. Probeer het over ${rateCheck.minutesLeft} minuten opnieuw.`,
-          retry_after_minutes: rateCheck.minutesLeft
+          error: `Te veel aanvragen. Probeer het over ${limiet.resetOverMin} minuten opnieuw.`
         })
       };
     }
-
-    context.log(`Aanroep toegestaan voor IP: ${ip} — nog ${rateCheck.remaining} aanroepen over dit uur`);
+    context.log(`Rate limit OK voor IP: ${ip} — nog ${limiet.resterend} aanroepen over dit uur`);
+    // ──────────────────────────────────────────────────────────────────────
 
     try {
       const body = await request.json();
@@ -88,7 +92,7 @@ app.http('analyze', {
       context.log('Analyse gestart — CV lengte:', cv_tekst.length, 'tekens');
 
       const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-5',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 8096,
         system: `Je bent een professionele loopbaancoach en recruitment specialist met 15 jaar ervaring.
 Je analyseert CV's en vacatures met als doel de kandidaat te helpen zijn/haar kansen te maximaliseren.

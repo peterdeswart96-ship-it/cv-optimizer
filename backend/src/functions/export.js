@@ -5,10 +5,10 @@ app.http('export', {
   methods: ['POST', 'OPTIONS'],
   authLevel: 'anonymous',
   handler: async (request, context) => {
-    const corsHeaders = {
-      'Access-Control-Allow-Origin': 'https://cv-optimizer.pdscloud.nl',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+const corsHeaders = {
+  'Access-Control-Allow-Origin': 'https://cv-optimizer.pdscloud.nl',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
 
     if (request.method === 'OPTIONS') {
