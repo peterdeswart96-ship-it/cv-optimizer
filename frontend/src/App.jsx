@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import SectieReview from './SectieReview'
 import CVPreview from './CVPreview'
 import KeywordFeedback from './KeywordFeedback'
+import AdminBranding from './AdminBranding'
 import { BrandingProvider, useBranding } from './BrandingContext'
 import { AuthProvider, useAuth } from './AuthContext'
 import LoginScherm from './LoginScherm'
@@ -23,7 +24,8 @@ function isDonker(hex) {
 
 function Header() {
   const { branding } = useBranding()
-  const { gebruiker, uitloggen } = useAuth()
+  const { gebruiker, uitloggen, isAdmin } = useAuth()
+  const navigate = useNavigate()
 
   return (
     <div
@@ -52,6 +54,14 @@ function Header() {
           >
             ❓ Hoe werkt het?
           </button>
+          {isAdmin && (
+            <button
+              onClick={() => navigate('/admin-branding')}
+              className="px-3 py-1 text-sm bg-white bg-opacity-20 text-white rounded hover:bg-opacity-30 transition-colors"
+            >
+              🎨 Huisstijl
+            </button>
+          )}
           <span className="text-white text-sm opacity-80">
             {gebruiker.name || gebruiker.username}
           </span>
@@ -532,6 +542,13 @@ function Analyse() {
         />
       )}
 
+      {/* Footer afbeelding */}
+      {branding.footer_url && (
+        <div className="fixed bottom-0 left-0 right-0 z-10 pointer-events-none">
+          <img src={branding.footer_url} alt="Footer" className="w-full object-cover max-h-24 opacity-80" />
+        </div>
+      )}
+
       <div className="max-w-5xl mx-auto px-6 py-8">
 
         {!analyse && (
@@ -771,8 +788,8 @@ function AppInhoud() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0A0A0A' }}>
+        <div className="w-8 h-8 border-4 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     )
   }
@@ -788,6 +805,7 @@ function AppInhoud() {
           <Route path="/sectie-review" element={<SectieReview />} />
           <Route path="/cv-preview" element={<CVPreview />} />
           <Route path="/hoe-werkt-het" element={<HoeWerktHet />} />
+          <Route path="/admin-branding" element={<AdminBranding />} />
         </Routes>
       </BrowserRouter>
     </BrandingProvider>
