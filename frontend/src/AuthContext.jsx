@@ -3,7 +3,6 @@ import { PublicClientApplication } from '@azure/msal-browser'
 import { msalConfig, loginRequest } from './authConfig'
 
 const msalInstance = new PublicClientApplication(msalConfig)
-
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
@@ -16,7 +15,6 @@ export function AuthProvider({ children }) {
       if (accounts.length > 0) {
         setGebruiker(accounts[0])
       }
-
       msalInstance.handleRedirectPromise().then(response => {
         if (response?.account) {
           setGebruiker(response.account)
@@ -32,14 +30,15 @@ export function AuthProvider({ children }) {
     await msalInstance.loginRedirect(loginRequest)
   }
 
-  // Directe link naar sign-up pagina van Entra External ID
   const registreren = async () => {
     await msalInstance.loginRedirect({ ...loginRequest, prompt: 'create' })
   }
 
   const uitloggen = async () => {
-    await msalInstance.logoutRedirect()
+    // localStorage clearen bij uitloggen — voorkomt verkeerde branding bij volgende gebruiker
+    localStorage.removeItem('companyId')
     setGebruiker(null)
+    await msalInstance.logoutRedirect()
   }
 
   const getToken = async () => {
@@ -57,13 +56,7 @@ export function AuthProvider({ children }) {
   }
 
   const getClaims = () => gebruiker?.idTokenClaims || {}
-
   const claims = getClaims()
-  const companyId = (claims['extn.companyId'] && claims['extn.companyId'][0]) ||
-                    claims['extension_companyId'] ||
-                    claims['companyId'] ||
-                    localStorage.getItem('companyId') ||
-                    'default'
 
   const rol = (claims['extn.rol'] && claims['extn.rol'][0]) ||
               claims['extension_rol'] ||
@@ -71,6 +64,15 @@ export function AuthProvider({ children }) {
               'gebruiker'
 
   const isAdmin = rol === 'admin'
+
+  // Voor admins: localStorage override wint van JWT claim (kunnen switchen tussen organisaties)
+  // Voor gewone gebruikers: altijd JWT claim — nooit localStorage
+  const companyIdUitJwt = (claims['extn.companyId'] && claims['extn.companyId'][0]) ||
+                           claims['extension_companyId'] ||
+                           claims['companyId'] ||
+                           'default'
+
+  const companyId = (isAdmin && localStorage.getItem('companyId')) || companyIdUitJwt
 
   return (
     <AuthContext.Provider value={{
