@@ -79,6 +79,7 @@ app.http('branding-opslaan', {
         welkomsttekst: formData.get('welkomsttekst') || bestaandeBranding.welkomsttekst || '',
         primaire_kleur: formData.get('primaire_kleur') || bestaandeBranding.primaire_kleur || '#2563EB',
         achtergrondkleur: formData.get('achtergrondkleur') || bestaandeBranding.achtergrondkleur || '#0A0A0A',
+        organisatiebalk_kleur: formData.get('organisatiebalk_kleur') || bestaandeBranding.organisatiebalk_kleur || '#FFFFFF',
         logo_url: logoUrl,
         footer_url: footerUrl
       };

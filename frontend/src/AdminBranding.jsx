@@ -22,6 +22,7 @@ export default function AdminBranding() {
   const [welkomsttekst, setWelkomsttekst] = useState(branding.welkomsttekst || '')
   const [primaireKleur, setPrimaireKleur] = useState(branding.primaire_kleur || '#2563EB')
   const [achtergrondkleur, setAchtergrondkleur] = useState(branding.achtergrondkleur || '#0A0A0A')
+  const [organisatiebalkkKleur, setOrganisatiebalkKleur] = useState(branding.organisatiebalk_kleur || '#FFFFFF')
   const [logoPreview, setLogoPreview] = useState(branding.logo_url || null)
   const [logoBestand, setLogoBestand] = useState(null)
   const [footerPreview, setFooterPreview] = useState(branding.footer_url || null)
@@ -72,6 +73,7 @@ export default function AdminBranding() {
       formData.append('welkomsttekst', welkomsttekst)
       formData.append('primaire_kleur', primaireKleur)
       formData.append('achtergrondkleur', achtergrondkleur)
+      formData.append('organisatiebalk_kleur', organisatiebalkkKleur)
       if (logoBestand) formData.append('logo', logoBestand)
       if (footerBestand) formData.append('footer', footerBestand)
 
@@ -204,6 +206,28 @@ export default function AdminBranding() {
                 style={{ backgroundColor: isDonker(achtergrondkleur) ? '#1F2937' : '#FFFFFF', color: isDonker(achtergrondkleur) ? '#F9FAFB' : '#111827', borderColor: isDonker(achtergrondkleur) ? '#374151' : '#D1D5DB' }}
               />
             </div>
+          </div>
+        </div>
+
+        {/* Organisatiebalk kleur */}
+        <div>
+          <label className="block text-sm font-medium mb-1" style={{ color: isDonker(achtergrondkleur) ? '#F9FAFB' : '#374151' }}>
+            Organisatiebalk kleur
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={organisatiebalkkKleur}
+              onChange={(e) => setOrganisatiebalkKleur(e.target.value)}
+              className="w-10 h-10 rounded cursor-pointer border-0"
+            />
+            <input
+              type="text"
+              value={organisatiebalkkKleur}
+              onChange={(e) => setOrganisatiebalkKleur(e.target.value)}
+              className="flex-1 text-sm border rounded-lg px-3 py-2 focus:outline-none font-mono"
+              style={{ backgroundColor: isDonker(achtergrondkleur) ? '#1F2937' : '#FFFFFF', color: isDonker(achtergrondkleur) ? '#F9FAFB' : '#111827', borderColor: isDonker(achtergrondkleur) ? '#374151' : '#D1D5DB' }}
+            />
           </div>
         </div>
 
