@@ -30,7 +30,6 @@ export function AuthProvider({ children }) {
     await msalInstance.loginRedirect(loginRequest)
   }
 
-  // Directe link naar sign-up pagina van Entra External ID
   const registreren = async () => {
     await msalInstance.loginRedirect({ ...loginRequest, prompt: 'create' })
   }
@@ -59,18 +58,21 @@ export function AuthProvider({ children }) {
   const getClaims = () => gebruiker?.idTokenClaims || {}
   const claims = getClaims()
 
-  // companyId uit JWT claim — localStorage alleen als fallback voor admins
-  const companyId = (claims['extn.companyId'] && claims['extn.companyId'][0]) ||
-                    claims['extension_companyId'] ||
-                    claims['companyId'] ||
-                    'default'
-
   const rol = (claims['extn.rol'] && claims['extn.rol'][0]) ||
               claims['extension_rol'] ||
               claims['rol'] ||
               'gebruiker'
 
   const isAdmin = rol === 'admin'
+
+  // Voor admins: localStorage override wint van JWT claim (kunnen switchen tussen organisaties)
+  // Voor gewone gebruikers: altijd JWT claim — nooit localStorage
+  const companyIdUitJwt = (claims['extn.companyId'] && claims['extn.companyId'][0]) ||
+                           claims['extension_companyId'] ||
+                           claims['companyId'] ||
+                           'default'
+
+  const companyId = (isAdmin && localStorage.getItem('companyId')) || companyIdUitJwt
 
   return (
     <AuthContext.Provider value={{
