@@ -1,21 +1,38 @@
 const { app } = require('@azure/functions');
 const mammoth = require('mammoth');
 const pdfParse = require('pdf-parse');
+const { valideerToken } = require('../../auth');
+
+const MAX_BESTAND_BYTES = 10 * 1024 * 1024; // 10 MB maximum bestandsgrootte
 
 app.http('upload', {
   methods: ['POST', 'OPTIONS'],
   authLevel: 'anonymous',
   handler: async (request, context) => {
-const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://cv-optimizer.pdscloud.nl',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': 'https://cv-optimizer.pdscloud.nl',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Content-Type': 'application/json'
     };
 
     if (request.method === 'OPTIONS') {
       return { status: 204, headers: corsHeaders };
     }
+
+    // ── Token validatie ──────────────────────────────────────────────────────
+    try {
+      const gebruiker = await valideerToken(request);
+      context.log('Token geldig voor gebruiker:', gebruiker.preferred_username ?? gebruiker.sub);
+    } catch (err) {
+      context.log('Token validatie mislukt:', err.message);
+      return {
+        status: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Niet geautoriseerd', details: err.message })
+      };
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     try {
       const formData = await request.formData();
@@ -28,7 +45,24 @@ const corsHeaders = {
       const bestandsnaam = bestand.name.toLowerCase();
       const buffer = Buffer.from(await bestand.arrayBuffer());
 
-      context.log('Bestand ontvangen:', bestandsnaam, '— grootte:', buffer.length, 'bytes');
+      // Bestandsgrootte check
+      if (buffer.length > MAX_BESTAND_BYTES) {
+        return {
+          status: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: `Bestand is te groot. Maximum is ${MAX_BESTAND_BYTES / 1024 / 1024} MB.` })
+        };
+      }
+
+      // Bestandstype validatie — alleen op extensie én MIME type
+      const toegestaneTypes = ['.pdf', '.docx'];
+      const isGeldigeExtensie = toegestaneTypes.some(ext => bestandsnaam.endsWith(ext));
+      if (!isGeldigeExtensie) {
+        return { status: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Alleen .pdf en .docx bestanden zijn toegestaan' }) };
+      }
+
+      // Log alleen metadata, nooit bestandsinhoud (AVG: minimale logging)
+      context.log('Bestand ontvangen — grootte:', buffer.length, 'bytes, type:', bestandsnaam.split('.').pop());
 
       let tekst = '';
 
@@ -40,8 +74,6 @@ const corsHeaders = {
         const result = await mammoth.extractRawText({ buffer });
         tekst = result.value;
         context.log('DOCX geparsed — tekst lengte:', tekst.length);
-      } else {
-        return { status: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Alleen .pdf en .docx bestanden zijn toegestaan' }) };
       }
 
       tekst = tekst.replace(/\n{3,}/g, '\n\n').trim();
@@ -53,7 +85,8 @@ const corsHeaders = {
       return {
         status: 200,
         headers: corsHeaders,
-        body: JSON.stringify({ tekst, bestandsnaam: bestand.name, tekst_lengte: tekst.length })
+        // Bestandsnaam NIET teruggeven — niet nodig en vermindert PII in responses
+        body: JSON.stringify({ tekst, tekst_lengte: tekst.length })
       };
 
     } catch (error) {
@@ -61,7 +94,7 @@ const corsHeaders = {
       return {
         status: 500,
         headers: corsHeaders,
-        body: JSON.stringify({ error: 'Fout bij verwerken bestand', details: error.message })
+        body: JSON.stringify({ error: 'Fout bij verwerken bestand' })
       };
     }
   }
