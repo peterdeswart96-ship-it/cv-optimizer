@@ -1,8 +1,14 @@
 const { app } = require('@azure/functions');
 const { BlobServiceClient } = require('@azure/storage-blob');
+const { DefaultAzureCredential } = require('@azure/identity');
+const { valideerToken } = require('../../auth');
 
-const STORAGE_CONNECTION = process.env.AZURE_STORAGE_CONNECTION_STRING;
+const STORAGE_URL = 'https://stcvoptimizer.blob.core.windows.net';
 const CONTAINER = 'cv-optimizer-users';
+
+function getBlobServiceClient() {
+  return new BlobServiceClient(STORAGE_URL, new DefaultAzureCredential());
+}
 
 app.http('cv-lijst', {
   methods: ['GET', 'DELETE', 'OPTIONS'],
@@ -19,24 +25,32 @@ app.http('cv-lijst', {
       return { status: 204, headers: corsHeaders };
     }
 
-    const gebruiker_id = request.query.get('gebruiker_id');
-
-    if (!gebruiker_id) {
+    // ── Token validatie ──────────────────────────────────────────────────────
+    let gebruiker;
+    try {
+      gebruiker = await valideerToken(request);
+      context.log('Token geldig voor gebruiker:', gebruiker.preferred_username ?? gebruiker.sub);
+    } catch (err) {
+      context.log('Token validatie mislukt:', err.message);
       return {
-        status: 400,
+        status: 401,
         headers: corsHeaders,
-        body: JSON.stringify({ error: 'gebruiker_id is verplicht' })
+        body: JSON.stringify({ error: 'Niet geautoriseerd', details: err.message })
       };
     }
+    // ────────────────────────────────────────────────────────────────────────
 
-    const containerClient = BlobServiceClient
-      .fromConnectionString(STORAGE_CONNECTION)
-      .getContainerClient(CONTAINER);
+    // gebruiker_id altijd uit token — niet uit query parameter
+    const gebruiker_id = gebruiker.oid || gebruiker.sub;
+
+    const containerClient = getBlobServiceClient().getContainerClient(CONTAINER);
 
     // CV verwijderen
     if (request.method === 'DELETE') {
       try {
         const blob_naam = request.query.get('blob_naam');
+
+        // Verificeer dat het blob-pad begint met de gebruikers eigen ID
         if (!blob_naam || !blob_naam.startsWith(gebruiker_id)) {
           return {
             status: 403,
@@ -44,8 +58,10 @@ app.http('cv-lijst', {
             body: JSON.stringify({ error: 'Geen toegang tot dit CV' })
           };
         }
+
         await containerClient.getBlockBlobClient(blob_naam).delete();
-        context.log('CV verwijderd:', blob_naam);
+        context.log('CV verwijderd voor gebruiker:', gebruiker_id);
+
         return {
           status: 200,
           headers: corsHeaders,
@@ -55,7 +71,7 @@ app.http('cv-lijst', {
         return {
           status: 500,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'Fout bij verwijderen CV', details: error.message })
+          body: JSON.stringify({ error: 'Fout bij verwijderen CV' })
         };
       }
     }
@@ -66,7 +82,6 @@ app.http('cv-lijst', {
       const cvs = [];
 
       for await (const blob of containerClient.listBlobsFlat({ prefix })) {
-        // CV data ophalen
         const blobClient = containerClient.getBlobClient(blob.name);
         const download = await blobClient.download();
         const chunks = [];
@@ -84,7 +99,6 @@ app.http('cv-lijst', {
         });
       }
 
-      // Sorteren op datum (nieuwste eerst)
       cvs.sort((a, b) => new Date(b.opgeslagen_op) - new Date(a.opgeslagen_op));
 
       return {
@@ -98,7 +112,7 @@ app.http('cv-lijst', {
       return {
         status: 500,
         headers: corsHeaders,
-        body: JSON.stringify({ error: 'Fout bij ophalen CV lijst', details: error.message })
+        body: JSON.stringify({ error: 'Fout bij ophalen CV lijst' })
       };
     }
   }

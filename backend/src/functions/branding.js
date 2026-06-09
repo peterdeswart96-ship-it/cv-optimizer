@@ -1,8 +1,15 @@
 const { app } = require('@azure/functions');
 const { BlobServiceClient } = require('@azure/storage-blob');
+const { DefaultAzureCredential } = require('@azure/identity');
+const { valideerToken } = require('../../auth');
 
-const STORAGE_CONNECTION = process.env.AZURE_STORAGE_CONNECTION_STRING;
+const STORAGE_URL = 'https://stcvoptimizer.blob.core.windows.net';
 const CONTAINER = 'branding';
+const COMPANY_ID_CLAIM = 'extension_6248a5e084184d4796919f8b07dc5723_companyId';
+
+function getBlobServiceClient() {
+  return new BlobServiceClient(STORAGE_URL, new DefaultAzureCredential());
+}
 
 app.http('branding', {
   methods: ['GET', 'OPTIONS'],
@@ -19,20 +26,31 @@ app.http('branding', {
       return { status: 204, headers: corsHeaders };
     }
 
+    // ── Token validatie ──────────────────────────────────────────────────────
+    let gebruiker;
     try {
-      // companyId uit query parameter (later vervangen door JWT claim na B2C implementatie)
-      const companyId = request.query.get('companyId') || 'default';
-      const bestandsnaam = `${companyId}.json`;
+      gebruiker = await valideerToken(request);
+      context.log('Branding aangevraagd door:', gebruiker.preferred_username ?? gebruiker.sub);
+    } catch (err) {
+      context.log('Token validatie mislukt bij branding:', err.message);
+      return {
+        status: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Niet geautoriseerd', details: err.message })
+      };
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
-      const containerClient = BlobServiceClient
-        .fromConnectionString(STORAGE_CONNECTION)
-        .getContainerClient(CONTAINER);
+    try {
+      // companyId altijd uit JWT-token — nooit uit query parameters
+      const companyId = gebruiker[COMPANY_ID_CLAIM] || gebruiker['extn.companyId'] || 'default';
+      context.log('Branding ophalen voor companyId:', companyId);
 
-      // Probeer organisatie-specifieke branding op te halen
-      // Bij mislukken: fallback naar default.json
+      const containerClient = getBlobServiceClient().getContainerClient(CONTAINER);
+
       let branding;
       try {
-        const blobClient = containerClient.getBlobClient(bestandsnaam);
+        const blobClient = containerClient.getBlobClient(`${companyId}.json`);
         const download = await blobClient.download();
         const tekst = await streamToString(download.readableStreamBody);
         branding = JSON.parse(tekst);

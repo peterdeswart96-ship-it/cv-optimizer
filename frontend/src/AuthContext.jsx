@@ -1,94 +1,130 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { PublicClientApplication } from '@azure/msal-browser'
+import { PublicClientApplication, InteractionRequiredAuthError } from '@azure/msal-browser'
 import { msalConfig, loginRequest } from './authConfig'
 
+// ─── MSAL instantie (buiten component zodat hij niet herinitialiseerd wordt) ──
 const msalInstance = new PublicClientApplication(msalConfig)
+// ─────────────────────────────────────────────────────────────────────────────
+
 const AuthContext = createContext(null)
+
+// Extension attribute voor companyId — zelfde naam als in de backend
+const COMPANY_ID_CLAIM = 'extension_6248a5e084184d4796919f8b07dc5723_companyId'
+
+function getCompanyIdUitToken(account) {
+  if (!account) return null
+  const claims = account.idTokenClaims || {}
+  return claims[COMPANY_ID_CLAIM] || claims['extn.companyId'] || null
+}
+
+function getIsAdminUitToken(account) {
+  if (!account) return false
+  const adminIds = [
+    '6b736f58-cd68-430f-9acd-f7e07fe2fc4e' // Peter de Swart
+  ]
+  const claims = account.idTokenClaims || {}
+  return adminIds.includes(account.localAccountId) || adminIds.includes(claims.oid)
+}
 
 export function AuthProvider({ children }) {
   const [gebruiker, setGebruiker] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    msalInstance.initialize().then(() => {
-      const accounts = msalInstance.getAllAccounts()
-      if (accounts.length > 0) {
-        setGebruiker(accounts[0])
-      }
-      msalInstance.handleRedirectPromise().then(response => {
-        if (response?.account) {
-          setGebruiker(response.account)
+    // Initialiseer MSAL en verwerk terugkeer van redirect login
+    msalInstance.initialize()
+      .then(() => msalInstance.handleRedirectPromise())
+      .then((result) => {
+        if (result?.account) {
+          msalInstance.setActiveAccount(result.account)
         }
-        setLoading(false)
-      }).catch(() => {
+        const account = msalInstance.getActiveAccount()
+          || msalInstance.getAllAccounts()[0]
+          || null
+        setGebruiker(account)
+      })
+      .catch((err) => {
+        console.error('MSAL initialisatie fout:', err)
+      })
+      .finally(() => {
         setLoading(false)
       })
-    })
   }, [])
 
   const inloggen = async () => {
-    await msalInstance.loginRedirect(loginRequest)
+    try {
+      await msalInstance.loginRedirect(loginRequest)
+    } catch (err) {
+      console.error('Inloggen mislukt:', err)
+    }
   }
 
-  const registreren = async () => {
-    await msalInstance.loginRedirect({ ...loginRequest, prompt: 'create' })
-  }
-
-  const uitloggen = async () => {
-    // localStorage clearen bij uitloggen — voorkomt verkeerde branding bij volgende gebruiker
+  const uitloggen = () => {
+    // ── Security: verwijder alle lokale state bij uitloggen ──────────────────
+    // localStorage companyId cleanup — voorkomt dat admin-override zichtbaar
+    // blijft voor de volgende gebruiker op hetzelfde apparaat
     localStorage.removeItem('companyId')
-    setGebruiker(null)
-    await msalInstance.logoutRedirect()
+    // ────────────────────────────────────────────────────────────────────────
+
+    const account = msalInstance.getActiveAccount()
+    msalInstance.logoutRedirect({
+      account,
+      postLogoutRedirectUri: window.location.origin
+    })
   }
 
   const getToken = async () => {
-    if (!gebruiker) return null
+    const account = msalInstance.getActiveAccount()
+      || msalInstance.getAllAccounts()[0]
+    if (!account) return null
+
     try {
-      const response = await msalInstance.acquireTokenSilent({
+      const result = await msalInstance.acquireTokenSilent({
         ...loginRequest,
-        account: gebruiker
+        account
       })
-      return response.idToken
-    } catch {
-      await msalInstance.acquireTokenRedirect(loginRequest)
+      return result.accessToken
+    } catch (err) {
+      if (err instanceof InteractionRequiredAuthError) {
+        await msalInstance.acquireTokenRedirect({ ...loginRequest, account })
+      }
+      console.error('Token ophalen mislukt:', err)
       return null
     }
   }
 
-  const getClaims = () => gebruiker?.idTokenClaims || {}
-  const claims = getClaims()
+  // companyId bepalen:
+  // 1. Als admin: localStorage override (voor switchen tussen organisaties)
+  // 2. Anders: altijd uit JWT-token (voorkomt manipulatie door gewone gebruikers)
+  const isAdmin = getIsAdminUitToken(gebruiker)
+  const companyIdUitToken = getCompanyIdUitToken(gebruiker)
 
-  const rol = (claims['extn.rol'] && claims['extn.rol'][0]) ||
-              claims['extension_rol'] ||
-              claims['rol'] ||
-              'gebruiker'
-
-  const isAdmin = rol === 'admin'
-
-  // Voor admins: localStorage override wint van JWT claim (kunnen switchen tussen organisaties)
-  // Voor gewone gebruikers: altijd JWT claim — nooit localStorage
-  const companyIdUitJwt = (claims['extn.companyId'] && claims['extn.companyId'][0]) ||
-                           claims['extension_companyId'] ||
-                           claims['companyId'] ||
-                           'default'
-
-  const companyId = (isAdmin && localStorage.getItem('companyId')) || companyIdUitJwt
+  let companyId
+  if (isAdmin) {
+    companyId = localStorage.getItem('companyId') || companyIdUitToken || 'default'
+  } else {
+    companyId = companyIdUitToken || 'default'
+  }
 
   return (
     <AuthContext.Provider value={{
       gebruiker,
       loading,
       inloggen,
-      registreren,
       uitloggen,
       getToken,
-      companyId,
-      rol,
-      isAdmin
+      isAdmin,
+      companyId
     }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
-export const useAuth = () => useContext(AuthContext)
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth moet binnen een AuthProvider gebruikt worden')
+  }
+  return context
+}

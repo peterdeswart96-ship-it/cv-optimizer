@@ -1,5 +1,6 @@
 const { app } = require('@azure/functions');
 const Anthropic = require('@anthropic-ai/sdk');
+const { valideerToken } = require('../../auth');
 
 const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
 
@@ -20,6 +21,20 @@ app.http('extract', {
   handler: async (request, context) => {
     if (request.method === 'OPTIONS') return { status: 204, headers: corsHeaders };
 
+    // ── Token validatie ──────────────────────────────────────────────────────
+    try {
+      const gebruiker = await valideerToken(request);
+      context.log('Token geldig voor gebruiker:', gebruiker.preferred_username ?? gebruiker.sub);
+    } catch (err) {
+      context.log('Token validatie mislukt:', err.message);
+      return {
+        status: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Niet geautoriseerd', details: err.message })
+      };
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     try {
       const body = await request.json();
       const { cv_tekst, cv_base64, mime_type } = body;
@@ -36,6 +51,7 @@ app.http('extract', {
 
       let messages;
       if (cv_base64) {
+        // Base64 PDF verwerking via Claude vision
         messages = [{
           role: 'user',
           content: [
@@ -50,14 +66,16 @@ app.http('extract', {
           ]
         }];
       } else {
+        // Lengtebegrenzing als extra bescherming (AVG: minimale verwerking)
+        const veiligeTekst = cv_tekst.substring(0, 8000);
         messages = [{
           role: 'user',
-          content: `Lees deze CV-tekst uit. Identificeer alle secties en extraheer de inhoud per sectie.\nGeef ALLEEN geldige JSON terug:\n{"naam":"<naam of Onbekend>","secties":[{"naam":"<sectienaam>","inhoud":"<volledige inhoud>"}]}\n\nCV:\n${cv_tekst.substring(0, 8000)}`
+          content: `Lees deze CV-tekst uit. Identificeer alle secties en extraheer de inhoud per sectie.\nGeef ALLEEN geldige JSON terug:\n{"naam":"<naam of Onbekend>","secties":[{"naam":"<sectienaam>","inhoud":"<volledige inhoud>"}]}\n\nCV:\n${veiligeTekst}`
         }];
       }
 
       const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-5',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 2000,
         messages
       });

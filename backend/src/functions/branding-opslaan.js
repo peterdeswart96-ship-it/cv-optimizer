@@ -1,9 +1,15 @@
 const { app } = require('@azure/functions');
 const { BlobServiceClient } = require('@azure/storage-blob');
+const { DefaultAzureCredential } = require('@azure/identity');
+const { valideerToken } = require('../../auth');
 
-const STORAGE_CONNECTION = process.env.AZURE_STORAGE_CONNECTION_STRING;
+const STORAGE_URL = 'https://stcvoptimizer.blob.core.windows.net';
 const CONTAINER = 'branding';
 const TOEGESTAAN_ORIGIN = 'https://cv-optimizer.pdscloud.nl';
+
+function getBlobServiceClient() {
+  return new BlobServiceClient(STORAGE_URL, new DefaultAzureCredential());
+}
 
 app.http('branding-opslaan', {
   methods: ['POST', 'OPTIONS'],
@@ -20,6 +26,30 @@ app.http('branding-opslaan', {
       return { status: 204, headers: corsHeaders };
     }
 
+    // ── Token validatie + admin check ────────────────────────────────────────
+    const ADMIN_IDS = ['6b736f58-cd68-430f-9acd-f7e07fe2fc4e'];
+    try {
+      const gebruiker = await valideerToken(request);
+      const isAdmin = ADMIN_IDS.includes(gebruiker.oid) || ADMIN_IDS.includes(gebruiker.sub);
+      if (!isAdmin) {
+        context.log('Ongeautoriseerde branding-opslaan poging door:', gebruiker.sub);
+        return {
+          status: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Alleen admins mogen branding opslaan' })
+        };
+      }
+      context.log('Branding opslaan door admin:', gebruiker.preferred_username ?? gebruiker.sub);
+    } catch (err) {
+      context.log('Token validatie mislukt:', err.message);
+      return {
+        status: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Niet geautoriseerd', details: err.message })
+      };
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     try {
       const formData = await request.formData();
       const companyId = formData.get('companyId');
@@ -28,8 +58,7 @@ app.http('branding-opslaan', {
         return { status: 400, headers: corsHeaders, body: JSON.stringify({ error: 'companyId ontbreekt' }) };
       }
 
-      const blobService = BlobServiceClient.fromConnectionString(STORAGE_CONNECTION);
-      const container = blobService.getContainerClient(CONTAINER);
+      const container = getBlobServiceClient().getContainerClient(CONTAINER);
 
       // Lees bestaande branding op als basis
       let bestaandeBranding = {};
@@ -55,7 +84,7 @@ app.http('branding-opslaan', {
         await logoBlob.upload(logoBuffer, logoBuffer.length, {
           blobHTTPHeaders: { blobContentType: contentType }
         });
-        logoUrl = `https://stcvoptimizer.blob.core.windows.net/${CONTAINER}/${logoBlobNaam}`;
+        logoUrl = `${STORAGE_URL}/${CONTAINER}/${logoBlobNaam}`;
       }
 
       // Footer uploaden indien aanwezig
@@ -69,7 +98,7 @@ app.http('branding-opslaan', {
         await footerBlob.upload(footerBuffer, footerBuffer.length, {
           blobHTTPHeaders: { blobContentType: `image/${footerExtensie}` }
         });
-        footerUrl = `https://stcvoptimizer.blob.core.windows.net/${CONTAINER}/${footerBlobNaam}`;
+        footerUrl = `${STORAGE_URL}/${CONTAINER}/${footerBlobNaam}`;
       }
 
       // Nieuwe branding JSON samenstellen

@@ -1,19 +1,34 @@
 const { app } = require('@azure/functions');
 const { Document, Packer, Paragraph, TextRun, HeadingLevel } = require('docx');
+const { valideerToken } = require('../../auth');
 
 app.http('export', {
   methods: ['POST', 'OPTIONS'],
   authLevel: 'anonymous',
   handler: async (request, context) => {
-const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://cv-optimizer.pdscloud.nl',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': 'https://cv-optimizer.pdscloud.nl',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
 
     if (request.method === 'OPTIONS') {
       return { status: 204, headers: corsHeaders };
     }
+
+    // ── Token validatie ──────────────────────────────────────────────────────
+    try {
+      const gebruiker = await valideerToken(request);
+      context.log('Token geldig voor gebruiker:', gebruiker.preferred_username ?? gebruiker.sub);
+    } catch (err) {
+      context.log('Token validatie mislukt:', err.message);
+      return {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Niet geautoriseerd', details: err.message })
+      };
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     try {
       const body = await request.json();
@@ -27,6 +42,15 @@ const corsHeaders = {
         };
       }
 
+      // Maximaal 30 secties om misbruik te voorkomen
+      if (secties.length > 30) {
+        return {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ error: 'Te veel secties (maximum is 30)' })
+        };
+      }
+
       const children = [];
 
       for (const sectie of secties) {
@@ -36,7 +60,8 @@ const corsHeaders = {
           spacing: { before: 400, after: 200 }
         }));
 
-        const regels = (sectie.definitieve_tekst || sectie.originele_tekst).split('\n');
+        const tekst = sectie.definitieve_tekst || sectie.originele_tekst || '';
+        const regels = tekst.split('\n');
         for (const regel of regels) {
           if (regel.trim()) {
             children.push(new Paragraph({
@@ -67,7 +92,7 @@ const corsHeaders = {
       return {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Fout bij genereren DOCX', details: error.message })
+        body: JSON.stringify({ error: 'Fout bij genereren DOCX' })
       };
     }
   }

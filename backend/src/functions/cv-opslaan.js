@@ -1,9 +1,15 @@
 const { app } = require('@azure/functions');
 const { BlobServiceClient } = require('@azure/storage-blob');
+const { DefaultAzureCredential } = require('@azure/identity');
+const { valideerToken } = require('../../auth');
 
-const STORAGE_CONNECTION = process.env.AZURE_STORAGE_CONNECTION_STRING;
+const STORAGE_URL = 'https://stcvoptimizer.blob.core.windows.net';
 const CONTAINER = 'cv-optimizer-users';
 const MAX_CVS_PER_GEBRUIKER = 5;
+
+function getBlobServiceClient() {
+  return new BlobServiceClient(STORAGE_URL, new DefaultAzureCredential());
+}
 
 app.http('cv-opslaan', {
   methods: ['POST', 'OPTIONS'],
@@ -20,6 +26,21 @@ app.http('cv-opslaan', {
       return { status: 204, headers: corsHeaders };
     }
 
+    // ── Token validatie ──────────────────────────────────────────────────────
+    let gebruiker;
+    try {
+      gebruiker = await valideerToken(request);
+      context.log('Token geldig voor gebruiker:', gebruiker.preferred_username ?? gebruiker.sub);
+    } catch (err) {
+      context.log('Token validatie mislukt:', err.message);
+      return {
+        status: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Niet geautoriseerd', details: err.message })
+      };
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     try {
       const body = await request.json();
       const { cv_tekst, cv_naam, gebruiker_id } = body;
@@ -32,11 +53,19 @@ app.http('cv-opslaan', {
         };
       }
 
-      const containerClient = BlobServiceClient
-        .fromConnectionString(STORAGE_CONNECTION)
-        .getContainerClient(CONTAINER);
+      // Verificeer dat gebruiker_id overeenkomt met het token
+      // Voorkomt dat gebruiker A data opslaat onder gebruiker_id van B
+      const tokenGebruikerId = gebruiker.oid || gebruiker.sub;
+      if (gebruiker_id !== tokenGebruikerId) {
+        context.log('gebruiker_id mismatch:', gebruiker_id, '!=', tokenGebruikerId);
+        return {
+          status: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Geen toegang' })
+        };
+      }
 
-      // Container aanmaken als die niet bestaat
+      const containerClient = getBlobServiceClient().getContainerClient(CONTAINER);
       await containerClient.createIfNotExists();
 
       // Huidige CV's ophalen om limiet te checken
@@ -72,7 +101,7 @@ app.http('cv-opslaan', {
         blobHTTPHeaders: { blobContentType: 'application/json' }
       });
 
-      context.log('CV opgeslagen:', blobNaam);
+      context.log('CV opgeslagen voor gebruiker:', tokenGebruikerId);
 
       return {
         status: 200,
@@ -85,7 +114,7 @@ app.http('cv-opslaan', {
       return {
         status: 500,
         headers: corsHeaders,
-        body: JSON.stringify({ error: 'Fout bij opslaan CV', details: error.message })
+        body: JSON.stringify({ error: 'Fout bij opslaan CV' })
       };
     }
   }
