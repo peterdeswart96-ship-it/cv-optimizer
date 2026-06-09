@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
+import { useAuth } from './AuthContext'
 
 const BACKEND = 'https://func-cv-optimizer-linux.azurewebsites.net/api'
 
@@ -16,19 +17,34 @@ const BrandingContext = createContext(defaultBranding)
 
 export function BrandingProvider({ children, companyId = 'default', isAdmin = false }) {
   const [branding, setBranding] = useState(defaultBranding)
+  const { getToken } = useAuth()
 
+  // companyId voor admin-switcher — de backend leest het altijd uit het JWT-token,
+  // maar we gebruiken companyId hier als trigger om opnieuw te laden bij wisselen
   const effectiefCompanyId = (isAdmin && localStorage.getItem('companyId')) || companyId
 
   useEffect(() => {
-    fetch(`${BACKEND}/branding?companyId=${effectiefCompanyId}`)
-      .then(res => res.json())
-      .then(data => {
+    const laadBranding = async () => {
+      try {
+        const token = await getToken()
+        const headers = {}
+        if (token) headers['Authorization'] = `Bearer ${token}`
+
+        // Geen query parameter meer — backend leest companyId uit JWT-token
+        const res = await fetch(`${BACKEND}/branding`, { headers })
+        if (!res.ok) return
+
+        const data = await res.json()
         setBranding(data)
         document.documentElement.style.setProperty('--kleur-primair', data.primaire_kleur)
         document.documentElement.style.setProperty('--kleur-achtergrond', data.achtergrondkleur)
         document.body.style.backgroundColor = data.achtergrondkleur
-      })
-      .catch(() => {})
+      } catch {
+        // Fallback naar default branding bij fout
+      }
+    }
+
+    laadBranding()
   }, [effectiefCompanyId])
 
   return (
