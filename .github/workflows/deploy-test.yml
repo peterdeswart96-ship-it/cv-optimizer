@@ -17,10 +17,10 @@ jobs:
 
       - name: Install & Build (Test)
         env:
-          VITE_CLAUDE_API_KEY: ${{ secrets.VITE_CLAUDE_API_KEY }}
+          VITE_ENTRA_CLIENT_ID: ${{ secrets.VITE_ENTRA_CLIENT_ID }}
         run: |
           cd frontend
-          echo "VITE_CLAUDE_API_KEY=$VITE_CLAUDE_API_KEY" > .env
+          echo "VITE_ENTRA_CLIENT_ID=$VITE_ENTRA_CLIENT_ID" > .env
           npm install
           npm run build
 
