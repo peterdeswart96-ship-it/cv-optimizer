@@ -1,15 +1,15 @@
 const { app } = require('@azure/functions');
 const { BlobServiceClient } = require('@azure/storage-blob');
+const { DefaultAzureCredential } = require('@azure/identity');
 const { valideerToken } = require('../../auth');
 
-// Gebruik Managed Identity indien beschikbaar, anders connection string als fallback
-// Zodra Managed Identity is geconfigureerd: verwijder AZURE_STORAGE_CONNECTION_STRING
-// en gebruik: new BlobServiceClient(`https://${storageAccount}.blob.core.windows.net`, new DefaultAzureCredential())
-const STORAGE_CONNECTION = process.env.AZURE_STORAGE_CONNECTION_STRING;
+const STORAGE_URL = 'https://stcvoptimizer.blob.core.windows.net';
 const CONTAINER = 'branding';
-
-// Extension attribute naam zoals geregistreerd in Entra External ID
 const COMPANY_ID_CLAIM = 'extension_6248a5e084184d4796919f8b07dc5723_companyId';
+
+function getBlobServiceClient() {
+  return new BlobServiceClient(STORAGE_URL, new DefaultAzureCredential());
+}
 
 app.http('branding', {
   methods: ['GET', 'OPTIONS'],
@@ -42,20 +42,15 @@ app.http('branding', {
     // ────────────────────────────────────────────────────────────────────────
 
     try {
-      // companyId ALTIJD uit het JWT-token — NOOIT uit query parameters
-      // Dit voorkomt dat een gebruiker de branding van een andere organisatie kan opvragen
+      // companyId altijd uit JWT-token — nooit uit query parameters
       const companyId = gebruiker[COMPANY_ID_CLAIM] || gebruiker['extn.companyId'] || 'default';
-      const bestandsnaam = `${companyId}.json`;
-
       context.log('Branding ophalen voor companyId:', companyId);
 
-      const containerClient = BlobServiceClient
-        .fromConnectionString(STORAGE_CONNECTION)
-        .getContainerClient(CONTAINER);
+      const containerClient = getBlobServiceClient().getContainerClient(CONTAINER);
 
       let branding;
       try {
-        const blobClient = containerClient.getBlobClient(bestandsnaam);
+        const blobClient = containerClient.getBlobClient(`${companyId}.json`);
         const download = await blobClient.download();
         const tekst = await streamToString(download.readableStreamBody);
         branding = JSON.parse(tekst);
@@ -73,7 +68,6 @@ app.http('branding', {
         headers: corsHeaders,
         body: JSON.stringify(branding)
       };
-
     } catch (error) {
       context.log('Fout bij ophalen branding:', error.message);
       return {
