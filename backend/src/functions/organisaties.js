@@ -1,9 +1,16 @@
 const { app } = require('@azure/functions');
 const { BlobServiceClient } = require('@azure/storage-blob');
+const { DefaultAzureCredential } = require('@azure/identity');
 
-const STORAGE_CONNECTION = process.env.AZURE_STORAGE_CONNECTION_STRING;
+const STORAGE_URL = 'https://stcvoptimizer.blob.core.windows.net';
 const CONTAINER = 'branding';
 
+function getBlobServiceClient() {
+  return new BlobServiceClient(STORAGE_URL, new DefaultAzureCredential());
+}
+
+// Organisaties is een publiek endpoint — geen auth vereist
+// Het bevat alleen bedrijfsnamen, geen PII
 app.http('organisaties', {
   methods: ['GET', 'OPTIONS'],
   authLevel: 'anonymous',
@@ -20,8 +27,7 @@ app.http('organisaties', {
     }
 
     try {
-      const blobClient = BlobServiceClient
-        .fromConnectionString(STORAGE_CONNECTION)
+      const blobClient = getBlobServiceClient()
         .getContainerClient(CONTAINER)
         .getBlobClient('_organisaties.json');
 
