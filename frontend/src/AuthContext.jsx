@@ -4,7 +4,6 @@ import { msalConfig, loginRequest } from './authConfig'
 
 // ─── MSAL instantie (buiten component zodat hij niet herinitialiseerd wordt) ──
 const msalInstance = new PublicClientApplication(msalConfig)
-await msalInstance.initialize()
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AuthContext = createContext(null)
@@ -14,18 +13,16 @@ const COMPANY_ID_CLAIM = 'extension_6248a5e084184d4796919f8b07dc5723_companyId'
 
 function getCompanyIdUitToken(account) {
   if (!account) return null
-  // Probeer de claim uit idTokenClaims (meest betrouwbaar)
   const claims = account.idTokenClaims || {}
   return claims[COMPANY_ID_CLAIM] || claims['extn.companyId'] || null
 }
 
 function getIsAdminUitToken(account) {
   if (!account) return false
-  const claims = account.idTokenClaims || {}
-  // Controleer of het een admin-account is op basis van specifieke gebruikers-IDs
   const adminIds = [
     '6b736f58-cd68-430f-9acd-f7e07fe2fc4e' // Peter de Swart
   ]
+  const claims = account.idTokenClaims || {}
   return adminIds.includes(account.localAccountId) || adminIds.includes(claims.oid)
 }
 
@@ -34,8 +31,9 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Verwerk terugkeer van redirect login
-    msalInstance.handleRedirectPromise()
+    // Initialiseer MSAL en verwerk terugkeer van redirect login
+    msalInstance.initialize()
+      .then(() => msalInstance.handleRedirectPromise())
       .then((result) => {
         if (result?.account) {
           msalInstance.setActiveAccount(result.account)
@@ -46,7 +44,7 @@ export function AuthProvider({ children }) {
         setGebruiker(account)
       })
       .catch((err) => {
-        console.error('MSAL redirect fout:', err)
+        console.error('MSAL initialisatie fout:', err)
       })
       .finally(() => {
         setLoading(false)
@@ -88,7 +86,6 @@ export function AuthProvider({ children }) {
       return result.accessToken
     } catch (err) {
       if (err instanceof InteractionRequiredAuthError) {
-        // Token verlopen of interactie vereist — redirect naar login
         await msalInstance.acquireTokenRedirect({ ...loginRequest, account })
       }
       console.error('Token ophalen mislukt:', err)
@@ -104,10 +101,8 @@ export function AuthProvider({ children }) {
 
   let companyId
   if (isAdmin) {
-    // Admins mogen localStorage gebruiken voor de org-switcher
     companyId = localStorage.getItem('companyId') || companyIdUitToken || 'default'
   } else {
-    // Gewone gebruikers: ALTIJD uit token, localStorage wordt genegeerd
     companyId = companyIdUitToken || 'default'
   }
 
