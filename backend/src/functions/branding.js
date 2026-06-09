@@ -1,8 +1,15 @@
 const { app } = require('@azure/functions');
 const { BlobServiceClient } = require('@azure/storage-blob');
+const { valideerToken } = require('../../auth');
 
+// Gebruik Managed Identity indien beschikbaar, anders connection string als fallback
+// Zodra Managed Identity is geconfigureerd: verwijder AZURE_STORAGE_CONNECTION_STRING
+// en gebruik: new BlobServiceClient(`https://${storageAccount}.blob.core.windows.net`, new DefaultAzureCredential())
 const STORAGE_CONNECTION = process.env.AZURE_STORAGE_CONNECTION_STRING;
 const CONTAINER = 'branding';
+
+// Extension attribute naam zoals geregistreerd in Entra External ID
+const COMPANY_ID_CLAIM = 'extension_6248a5e084184d4796919f8b07dc5723_companyId';
 
 app.http('branding', {
   methods: ['GET', 'OPTIONS'],
@@ -19,17 +26,33 @@ app.http('branding', {
       return { status: 204, headers: corsHeaders };
     }
 
+    // ── Token validatie ──────────────────────────────────────────────────────
+    let gebruiker;
     try {
-      // companyId uit query parameter (later vervangen door JWT claim na B2C implementatie)
-      const companyId = request.query.get('companyId') || 'default';
+      gebruiker = await valideerToken(request);
+      context.log('Branding aangevraagd door:', gebruiker.preferred_username ?? gebruiker.sub);
+    } catch (err) {
+      context.log('Token validatie mislukt bij branding:', err.message);
+      return {
+        status: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Niet geautoriseerd', details: err.message })
+      };
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
+    try {
+      // companyId ALTIJD uit het JWT-token — NOOIT uit query parameters
+      // Dit voorkomt dat een gebruiker de branding van een andere organisatie kan opvragen
+      const companyId = gebruiker[COMPANY_ID_CLAIM] || gebruiker['extn.companyId'] || 'default';
       const bestandsnaam = `${companyId}.json`;
+
+      context.log('Branding ophalen voor companyId:', companyId);
 
       const containerClient = BlobServiceClient
         .fromConnectionString(STORAGE_CONNECTION)
         .getContainerClient(CONTAINER);
 
-      // Probeer organisatie-specifieke branding op te halen
-      // Bij mislukken: fallback naar default.json
       let branding;
       try {
         const blobClient = containerClient.getBlobClient(bestandsnaam);
@@ -50,6 +73,7 @@ app.http('branding', {
         headers: corsHeaders,
         body: JSON.stringify(branding)
       };
+
     } catch (error) {
       context.log('Fout bij ophalen branding:', error.message);
       return {
