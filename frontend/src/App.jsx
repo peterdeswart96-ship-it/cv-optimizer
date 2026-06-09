@@ -49,11 +49,12 @@ function Header() {
       </div>
       {gebruiker && (
         <div className="flex items-center gap-3">
-          <button
+      <button
             onClick={() => window.open('/hoe-werkt-het', '_blank')}
-            className="px-3 py-1 text-sm bg-white bg-opacity-20 text-white rounded hover:bg-opacity-30 transition-colors"
+            title="Hoe werkt het?"
+            className="w-8 h-8 flex items-center justify-center text-base bg-white bg-opacity-20 text-white rounded-full hover:bg-opacity-30 transition-colors"
           >
-            ❓ Hoe werkt het?
+            ?
           </button>
           <button
             onClick={() => navigate('/security')}
@@ -807,6 +808,17 @@ function Analyse() {
 
 function AppInhoud() {
   const { gebruiker, loading, companyId, isAdmin } = useAuth()
+
+  // /security is publiek toegankelijk — ook zonder login (AVG vereiste)
+  if (window.location.pathname === '/security') {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/security" element={<Security />} />
+        </Routes>
+      </BrowserRouter>
+    )
+  }
 
   if (loading) {
     return (
