@@ -7,6 +7,9 @@ const STORAGE_URL = 'https://stcvoptimizer.blob.core.windows.net';
 const CONTAINER = 'branding';
 const COMPANY_ID_CLAIM = 'extension_6248a5e084184d4796919f8b07dc5723_companyId';
 
+// Whitelist van geldige companyIds — voorkomt dat gebruikers willekeurige blob-namen opvragen
+const GELDIGE_COMPANY_IDS = ['blacktang', 'mokum', 'default'];
+
 function getBlobServiceClient() {
   return new BlobServiceClient(STORAGE_URL, new DefaultAzureCredential());
 }
@@ -18,7 +21,7 @@ app.http('branding', {
     const corsHeaders = {
       'Access-Control-Allow-Origin': 'https://cv-optimizer.pdscloud.nl',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Company-Id',
       'Content-Type': 'application/json'
     };
 
@@ -42,8 +45,22 @@ app.http('branding', {
     // ────────────────────────────────────────────────────────────────────────
 
     try {
-      // companyId altijd uit JWT-token — nooit uit query parameters
-      const companyId = gebruiker[COMPANY_ID_CLAIM] || gebruiker['extn.companyId'] || 'default';
+      // companyId bepalen — meerdere bronnen in volgorde van betrouwbaarheid:
+      // 1. JWT access token claim (meest betrouwbaar, maar extension attrs zitten vaak alleen in idToken)
+      // 2. X-Company-Id header (frontend stuurt dit mee vanuit het idToken)
+      // 3. Fallback naar default
+      let companyId = gebruiker[COMPANY_ID_CLAIM] || gebruiker['extn.companyId'] || null;
+
+      if (!companyId) {
+        // Fallback: lees uit X-Company-Id header die de frontend meestuurt vanuit idToken
+        const headerCompanyId = request.headers.get('x-company-id');
+        if (headerCompanyId && GELDIGE_COMPANY_IDS.includes(headerCompanyId)) {
+          companyId = headerCompanyId;
+          context.log('CompanyId uit X-Company-Id header:', companyId);
+        }
+      }
+
+      companyId = companyId || 'default';
       context.log('Branding ophalen voor companyId:', companyId);
 
       const containerClient = getBlobServiceClient().getContainerClient(CONTAINER);
