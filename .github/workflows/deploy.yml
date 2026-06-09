@@ -1,20 +1,25 @@
 name: Deploy CV Optimizer
+
 on:
   push:
     branches: [main]
+
 permissions:
   contents: read
   pages: write
   id-token: write
+
 jobs:
   deploy-frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
       - name: Install & Build
         env:
           VITE_ENTRA_CLIENT_ID: ${{ secrets.VITE_ENTRA_CLIENT_ID }}
@@ -23,12 +28,15 @@ jobs:
           echo "VITE_ENTRA_CLIENT_ID=$VITE_ENTRA_CLIENT_ID" > .env
           npm install
           npm run build
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: './frontend/dist'
+
   deploy-pages:
     environment:
       name: github-pages
@@ -39,25 +47,52 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
   deploy-backend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
       - name: Install Azure Functions Core Tools
         run: npm install -g azure-functions-core-tools@4 --unsafe-perm true
+
       - name: Install backend dependencies
         run: |
           cd backend
           npm install
-      - name: Login to Azure
-        uses: azure/login@v1
+
+      - name: Azure login
+        uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Verwijder WEBSITE_RUN_FROM_PACKAGE
+        run: |
+          az functionapp config appsettings delete \
+            --name func-cv-optimizer-linux \
+            --resource-group rg-cv-optimizer \
+            --setting-names WEBSITE_RUN_FROM_PACKAGE
+
       - name: Deploy Azure Functions
         run: |
           cd backend
           func azure functionapp publish func-cv-optimizer-linux --javascript
+
+      - name: Verifieer deployment
+        run: |
+          sleep 30
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST https://func-cv-optimizer-linux.azurewebsites.net/api/analyze \
+            -H "Content-Type: application/json" \
+            -d '{"test": true}')
+          echo "HTTP status: $STATUS"
+          if [ "$STATUS" != "401" ]; then
+            echo "Verwachte 401, kreeg $STATUS — deployment mogelijk mislukt"
+            exit 1
+          fi
+          echo "Deployment succesvol geverifieerd (401 = auth werkt)"
