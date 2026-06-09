@@ -1,12 +1,55 @@
 <!doctype html>
-<html lang="en">
+<html lang="nl">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CV Optimizer</title>
+
+    <!--
+      Security headers via meta tags.
+      BELANGRIJK: HTTP-headers op Azure/GitHub Pages zijn sterker dan meta tags.
+      Deze meta tags zijn een extra laag — zie ook de Azure-configuratie instructies.
+
+      Content Security Policy:
+      - default-src 'self'          → alleen eigen origin mag content laden
+      - script-src 'self'           → geen inline scripts toegestaan (behalve de MSAL redirect fix hieronder)
+      - connect-src                 → staat alleen de eigen API en Entra/MSAL endpoints toe
+      - style-src 'self' 'unsafe-inline' → Tailwind CSS vereist inline styles
+      - img-src 'self' data: https:  → logos via HTTPS zijn toegestaan
+      - frame-ancestors 'none'      → voorkomt dat de app in een iframe geladen wordt (clickjacking)
+      - object-src 'none'           → geen Flash/plugins
+    -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' https://login.microsoftonline.com https://cvoptimizer.ciamlogin.com;
+      connect-src 'self'
+        https://func-cv-optimizer-linux.azurewebsites.net
+        https://login.microsoftonline.com
+        https://cvoptimizer.ciamlogin.com
+        https://cvoptimizer.onmicrosoft.com
+        https://graph.microsoft.com;
+      style-src 'self' 'unsafe-inline';
+      img-src 'self' data: https:;
+      font-src 'self';
+      frame-src https://login.microsoftonline.com https://cvoptimizer.ciamlogin.com;
+      frame-ancestors 'none';
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self' https://login.microsoftonline.com https://cvoptimizer.ciamlogin.com;
+    " />
+
+    <!-- Clickjacking bescherming (fallback voor browsers die CSP frame-ancestors niet ondersteunen) -->
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+
+    <!-- Verwijder Referer header bij navigatie naar andere domeinen (voorkomt PII-lekkage via URL) -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+    <!-- Schakel MIME-type sniffing uit -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+
   <script>
-    // Verwerk redirect van 404.html
+    // Verwerk redirect van 404.html (GitHub Pages SPA routing fix)
     var redirect = new URLSearchParams(window.location.search).get('redirect');
     if (redirect) {
       window.history.replaceState(null, null, redirect);
