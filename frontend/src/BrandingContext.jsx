@@ -17,10 +17,9 @@ const BrandingContext = createContext(defaultBranding)
 
 export function BrandingProvider({ children, companyId = 'default', isAdmin = false }) {
   const [branding, setBranding] = useState(defaultBranding)
-  const { getToken } = useAuth()
+  const { getToken, companyId: companyIdUitAuth } = useAuth()
 
-  // companyId voor admin-switcher — de backend leest het altijd uit het JWT-token,
-  // maar we gebruiken companyId hier als trigger om opnieuw te laden bij wisselen
+  // effectiefCompanyId: admin kan switchen via localStorage, anderen krijgen waarde uit token
   const effectiefCompanyId = (isAdmin && localStorage.getItem('companyId')) || companyId
 
   useEffect(() => {
@@ -30,7 +29,13 @@ export function BrandingProvider({ children, companyId = 'default', isAdmin = fa
         const headers = {}
         if (token) headers['Authorization'] = `Bearer ${token}`
 
-        // Geen query parameter meer — backend leest companyId uit JWT-token
+        // Stuur companyId mee als header — backend gebruikt dit als de JWT claim ontbreekt
+        // Dit is nodig omdat extension attributes alleen in idToken zitten, niet in access token
+        const cidVoorHeader = effectiefCompanyId || companyIdUitAuth || 'default'
+        if (cidVoorHeader && cidVoorHeader !== 'default') {
+          headers['X-Company-Id'] = cidVoorHeader
+        }
+
         const res = await fetch(`${BACKEND}/branding`, { headers })
         if (!res.ok) return
 
@@ -45,7 +50,7 @@ export function BrandingProvider({ children, companyId = 'default', isAdmin = fa
     }
 
     laadBranding()
-  }, [effectiefCompanyId])
+  }, [effectiefCompanyId, companyIdUitAuth])
 
   return (
     <BrandingContext.Provider value={{ branding }}>
