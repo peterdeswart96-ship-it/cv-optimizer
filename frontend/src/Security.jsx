@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useBranding } from './BrandingContext'
 
 function isDonker(hex) {
   if (!hex || !hex.startsWith('#') || hex.length < 7) return false
@@ -130,8 +129,7 @@ const ANKERS = [
 // ─── Hoofdcomponent ───────────────────────────────────────────────────────────
 export default function Security() {
   const navigate = useNavigate()
-  const { branding } = useBranding()
-  const primaireTekstKleur = isDonker(branding.primaire_kleur) ? '#FFFFFF' : '#111827'
+  const primaireTekstKleur = '#FFFFFF'
 
   const scrollNaar = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -142,7 +140,7 @@ export default function Security() {
 
       {/* Header */}
       <div className="border-b px-6 py-4 flex items-center justify-between"
-        style={{ backgroundColor: branding.primaire_kleur }}>
+        style={{ backgroundColor: '#1D4ED8' }}>
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/')} className="opacity-80 hover:opacity-100 transition-opacity">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -156,7 +154,7 @@ export default function Security() {
             <span className="font-semibold text-white">Privacy & Beveiliging</span>
           </div>
         </div>
-        <span className="text-sm opacity-70" style={{ color: primaireTekstKleur === '#FFFFFF' ? 'white' : '#111827' }}>
+        <span className="text-sm opacity-70" style={{ color: 'white' }}>
           cv-optimizer.pdscloud.nl
         </span>
       </div>

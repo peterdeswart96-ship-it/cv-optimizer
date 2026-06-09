@@ -809,6 +809,17 @@ function Analyse() {
 function AppInhoud() {
   const { gebruiker, loading, companyId, isAdmin } = useAuth()
 
+  // /security is publiek toegankelijk — ook zonder login (AVG vereiste)
+  if (window.location.pathname === '/security') {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/security" element={<Security />} />
+        </Routes>
+      </BrowserRouter>
+    )
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0A0A0A' }}>
