@@ -8,6 +8,7 @@ import { BrandingProvider, useBranding } from './BrandingContext'
 import { AuthProvider, useAuth } from './AuthContext'
 import LoginScherm from './LoginScherm'
 import HoeWerktHet from './HoeWerktHet'
+import Security from './Security'
 
 const BACKEND = 'https://func-cv-optimizer-linux.azurewebsites.net/api'
 
@@ -53,6 +54,14 @@ function Header() {
             className="px-3 py-1 text-sm bg-white bg-opacity-20 text-white rounded hover:bg-opacity-30 transition-colors"
           >
             ❓ Hoe werkt het?
+          </button>
+          <button
+            onClick={() => navigate('/security')}
+            className="px-3 py-1 text-sm bg-white bg-opacity-20 text-white rounded hover:bg-opacity-30 transition-colors flex items-center gap-1"
+            title="Privacy & Beveiliging"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Beveiliging
           </button>
           {isAdmin && (
             <button
@@ -819,6 +828,7 @@ function AppInhoud() {
           <Route path="/cv-preview" element={<CVPreview />} />
           <Route path="/hoe-werkt-het" element={<HoeWerktHet />} />
           <Route path="/admin-branding" element={<AdminBranding />} />
+          <Route path="/security" element={<Security />} />
         </Routes>
       </BrowserRouter>
     </BrandingProvider>
