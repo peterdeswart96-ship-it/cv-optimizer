@@ -199,7 +199,7 @@ export default function LoginScherm() {
                 src={SCREENSHOTS[actiefSchermshot].src}
                 alt={SCREENSHOTS[actiefSchermshot].label}
                 className="w-full object-cover"
-                style={{ maxHeight: '280px', objectPosition: 'top' }}
+                style={{ maxHeight: '360px', objectPosition: 'top' }}
               />
               <div className="px-4 py-3" style={{ backgroundColor: '#0F1A2E' }}>
                 <p className="text-sm font-medium" style={{ color: '#E2E8F0' }}>
@@ -223,7 +223,7 @@ export default function LoginScherm() {
                     opacity: actiefSchermshot === i ? 1 : 0.5
                   }}
                 >
-                  <img src={s.src} alt={s.label} className="w-full object-cover" style={{ height: '52px', objectPosition: 'top' }} />
+                  <img src={s.src} alt={s.label} className="w-full object-cover" style={{ height: '64px', objectPosition: 'top' }} />
                 </button>
               ))}
             </div>
