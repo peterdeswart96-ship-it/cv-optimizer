@@ -72,10 +72,16 @@ app.http('branding-opslaan', {
         // Geen bestaande branding — begin met lege config
       }
 
-      // Logo uploaden indien aanwezig
+      // Logo verwijderen indien gevraagd
       let logoUrl = bestaandeBranding.logo_url || null;
+      const verwijderLogo = formData.get('verwijder_logo') === 'true';
+      if (verwijderLogo) {
+        logoUrl = null;
+        context.log('Logo verwijderd voor:', companyId);
+      }
+      // Logo uploaden indien aanwezig
       const logoBestand = formData.get('logo');
-      if (logoBestand && logoBestand.size > 0) {
+      if (!verwijderLogo && logoBestand && logoBestand.size > 0) {
         const logoBuffer = Buffer.from(await logoBestand.arrayBuffer());
         const logoExtensie = logoBestand.name.split('.').pop().toLowerCase();
         const logoBlobNaam = `${companyId}-logo.${logoExtensie}`;
@@ -87,10 +93,16 @@ app.http('branding-opslaan', {
         logoUrl = `${STORAGE_URL}/${CONTAINER}/${logoBlobNaam}`;
       }
 
-      // Footer uploaden indien aanwezig
+      // Footer verwijderen indien gevraagd
       let footerUrl = bestaandeBranding.footer_url || null;
+      const verwijderFooter = formData.get('verwijder_footer') === 'true';
+      if (verwijderFooter) {
+        footerUrl = null;
+        context.log('Footer verwijderd voor:', companyId);
+      }
+      // Footer uploaden indien aanwezig
       const footerBestand = formData.get('footer');
-      if (footerBestand && footerBestand.size > 0) {
+      if (!verwijderFooter && footerBestand && footerBestand.size > 0) {
         const footerBuffer = Buffer.from(await footerBestand.arrayBuffer());
         const footerExtensie = footerBestand.name.split('.').pop().toLowerCase();
         const footerBlobNaam = `${companyId}-footer.${footerExtensie}`;

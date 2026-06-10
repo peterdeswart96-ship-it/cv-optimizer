@@ -25,8 +25,10 @@ export default function AdminBranding() {
   const [organisatiebalkkKleur, setOrganisatiebalkKleur] = useState(branding.organisatiebalk_kleur || '#FFFFFF')
   const [logoPreview, setLogoPreview] = useState(branding.logo_url || null)
   const [logoBestand, setLogoBestand] = useState(null)
+  const [logoVerwijderen, setLogoVerwijderen] = useState(false)
   const [footerPreview, setFooterPreview] = useState(branding.footer_url || null)
   const [footerBestand, setFooterBestand] = useState(null)
+  const [footerVerwijderen, setFooterVerwijderen] = useState(false)
   const [opslaan, setOpslaan] = useState(false)
   const [bericht, setBericht] = useState(null)
 
@@ -75,7 +77,9 @@ export default function AdminBranding() {
       formData.append('achtergrondkleur', achtergrondkleur)
       formData.append('organisatiebalk_kleur', organisatiebalkkKleur)
       if (logoBestand) formData.append('logo', logoBestand)
+      if (logoVerwijderen) formData.append('verwijder_logo', 'true')
       if (footerBestand) formData.append('footer', footerBestand)
+      if (footerVerwijderen) formData.append('verwijder_footer', 'true')
 
       const res = await fetch(`${BACKEND}/branding-opslaan`, {
         method: 'POST',
@@ -247,6 +251,15 @@ export default function AdminBranding() {
             >
               📁 Kies logo
             </button>
+            {logoPreview && (
+              <button
+                onClick={() => { setLogoPreview(null); setLogoBestand(null); setLogoVerwijderen(true) }}
+                className="px-3 py-2 text-sm border rounded-lg transition-colors"
+                style={{ borderColor: '#EF4444', color: '#EF4444', backgroundColor: 'transparent' }}
+              >
+                🗑 Verwijder logo
+              </button>
+            )}
             <input ref={logoRef} type="file" accept=".svg,.png" className="hidden" onChange={handleLogo} />
           </div>
           <p className="text-xs mt-2" style={{ color: isDonker(achtergrondkleur) ? '#9CA3AF' : '#6B7280' }}>
@@ -270,6 +283,15 @@ export default function AdminBranding() {
             >
               📁 Kies footer afbeelding
             </button>
+            {footerPreview && (
+              <button
+                onClick={() => { setFooterPreview(null); setFooterBestand(null); setFooterVerwijderen(true) }}
+                className="px-3 py-2 text-sm border rounded-lg transition-colors"
+                style={{ borderColor: '#EF4444', color: '#EF4444', backgroundColor: 'transparent' }}
+              >
+                🗑 Verwijder footer
+              </button>
+            )}
             <input ref={footerRef} type="file" accept=".png,.jpg,.jpeg,.svg" className="hidden" onChange={handleFooter} />
           </div>
           <p className="text-xs mt-2" style={{ color: isDonker(achtergrondkleur) ? '#9CA3AF' : '#6B7280' }}>
