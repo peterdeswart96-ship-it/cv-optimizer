@@ -35,9 +35,12 @@ export function BrandingProvider({ children, companyId = 'default', isAdmin = fa
           'Authorization': `Bearer ${token}`
         }
 
-        // Stuur companyId altijd mee als header — backend gebruikt dit als fallback
-        // omdat extension attributes alleen in idToken zitten, niet in access token
-        if (effectiefCompanyId && effectiefCompanyId !== 'default') {
+        // Admins sturen ALTIJD X-Company-Id mee — ook voor 'default'
+        // Dit voorkomt dat de backend de JWT claim van de admin gebruikt
+        // Gewone gebruikers: alleen meesturen als de JWT claim ontbreekt in het access token
+        if (isAdmin) {
+          headers['X-Company-Id'] = effectiefCompanyId
+        } else if (effectiefCompanyId && effectiefCompanyId !== 'default') {
           headers['X-Company-Id'] = effectiefCompanyId
         }
 
