@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from './AuthContext'
 
 const BACKEND = 'https://func-cv-optimizer-linux.azurewebsites.net/api'
 
 function SectieReview() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { getToken } = useAuth()
   const { analyse, cvTekst, vacatureTekst, keywordContext, geselecteerdeKeywords, keywordSecties } = location.state || {}
 
   const [huidigeSectieIndex, setHuidigeSectieIndex] = useState(0)
@@ -48,9 +50,13 @@ function SectieReview() {
     setEigenInstructie('')
 
     try {
+      const token1 = await getToken()
       const response = await fetch(`${BACKEND}/analyze-section`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token1 ? { 'Authorization': `Bearer ${token1}` } : {})
+        },
         body: JSON.stringify({
           sectie_naam: huidigeSectie.naam,
           sectie_inhoud: huidigeSectie.originele_tekst,
@@ -78,9 +84,13 @@ function SectieReview() {
     setFout(null)
 
     try {
+      const token2 = await getToken()
       const response = await fetch(`${BACKEND}/analyze-section`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token2 ? { 'Authorization': `Bearer ${token2}` } : {})
+        },
         body: JSON.stringify({
           sectie_naam: huidigeSectie.naam,
           sectie_inhoud: huidigeSectie.originele_tekst,
