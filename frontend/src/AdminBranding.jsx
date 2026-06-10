@@ -88,12 +88,13 @@ export default function AdminBranding() {
       })
       const data = await res.json()
       if (data.success) {
-        setBericht({ type: 'succes', tekst: 'Branding opgeslagen! Pagina wordt herladen...' })
-        // Bewaar huidige companyId zodat org-switcher na reload op dezelfde org blijft
+        setBericht({ type: 'succes', tekst: 'Branding opgeslagen!' })
+        // Bewaar huidige companyId zodat org-switcher na navigatie op dezelfde org blijft
         if (companyId && companyId !== 'default') {
           localStorage.setItem('companyId', companyId)
         }
-        setTimeout(() => window.location.reload(), 1500)
+        // Navigeer naar hoofdpagina in plaats van reload — voorkomt dat branding reset
+        setTimeout(() => navigate('/'), 1500)
       } else {
         setBericht({ type: 'fout', tekst: data.error || 'Opslaan mislukt' })
       }
