@@ -1,7 +1,8 @@
 const { app } = require('@azure/functions');
 const { BlobServiceClient } = require('@azure/storage-blob');
+const { DefaultAzureCredential } = require('@azure/identity');
 
-const STORAGE_CONNECTION = process.env.AZURE_STORAGE_CONNECTION_STRING;
+const STORAGE_URL = 'https://stcvoptimizer.blob.core.windows.net';
 const CONTAINER = 'cv-optimizer-users';
 const TOEGESTAAN_ORIGIN = 'https://cv-optimizer.pdscloud.nl';
 
@@ -29,7 +30,7 @@ app.http('vacature-lijst', {
       };
     }
 
-    const blobService = BlobServiceClient.fromConnectionString(STORAGE_CONNECTION);
+    const blobService = new BlobServiceClient(STORAGE_URL, new DefaultAzureCredential());
     const container = blobService.getContainerClient(CONTAINER);
 
     // DELETE
