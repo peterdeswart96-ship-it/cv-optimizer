@@ -775,7 +775,7 @@ function Analyse() {
                 {analyse.secties.map((sectie, i) => (
                   <div key={i} className="border border-gray-100 rounded-lg p-4">
                     <p className="text-sm font-medium text-gray-700">{sectie.naam}</p>
-                    <p className="text-xs text-gray-400 mt-1 font-mono">{sectie.originele_tekst.substring(0, 100)}...</p>
+                    <p className="text-xs text-gray-400 mt-1 font-mono">{(sectie.originele_tekst || sectie.opmerking || '').substring(0, 100)}...</p>
                   </div>
                 ))}
               </div>

@@ -143,7 +143,7 @@ Retourneer de volgende JSON-structuur:
     {
       "naam": "sectienaam zoals gevonden in CV",
       "volgorde": 1,
-      "originele_tekst": "volledige originele tekst van deze sectie"
+      "originele_tekst": "volledige originele tekst van deze sectie — VERPLICHT, altijd invullen"
     }
   ]
 }`
