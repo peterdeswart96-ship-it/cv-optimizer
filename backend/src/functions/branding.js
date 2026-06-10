@@ -6,8 +6,7 @@ const { valideerToken } = require('../../auth');
 const STORAGE_URL = 'https://stcvoptimizer.blob.core.windows.net';
 const CONTAINER = 'branding';
 const COMPANY_ID_CLAIM = 'extension_6248a5e084184d4796919f8b07dc5723_companyId';
-
-// Whitelist van geldige companyIds — voorkomt dat gebruikers willekeurige blob-namen opvragen
+const ADMIN_IDS = ['6b736f58-cd68-430f-9acd-f7e07fe2fc4e'];
 const GELDIGE_COMPANY_IDS = ['blacktang', 'mokum', 'default'];
 
 function getBlobServiceClient() {
@@ -29,7 +28,6 @@ app.http('branding', {
       return { status: 204, headers: corsHeaders };
     }
 
-    // ── Token validatie ──────────────────────────────────────────────────────
     let gebruiker;
     try {
       gebruiker = await valideerToken(request);
@@ -42,21 +40,24 @@ app.http('branding', {
         body: JSON.stringify({ error: 'Niet geautoriseerd', details: err.message })
       };
     }
-    // ────────────────────────────────────────────────────────────────────────
 
     try {
-      // companyId bepalen — meerdere bronnen in volgorde van betrouwbaarheid:
-      // 1. JWT access token claim (meest betrouwbaar, maar extension attrs zitten vaak alleen in idToken)
-      // 2. X-Company-Id header (frontend stuurt dit mee vanuit het idToken)
-      // 3. Fallback naar default
-      let companyId = gebruiker[COMPANY_ID_CLAIM] || gebruiker['extn.companyId'] || null;
+      const isAdmin = ADMIN_IDS.includes(gebruiker.oid) || ADMIN_IDS.includes(gebruiker.sub);
+      const headerCompanyId = request.headers.get('x-company-id');
 
-      if (!companyId) {
-        // Fallback: lees uit X-Company-Id header die de frontend meestuurt vanuit idToken
-        const headerCompanyId = request.headers.get('x-company-id');
-        if (headerCompanyId && GELDIGE_COMPANY_IDS.includes(headerCompanyId)) {
+      let companyId;
+
+      if (isAdmin && headerCompanyId && GELDIGE_COMPANY_IDS.includes(headerCompanyId)) {
+        // Admins: X-Company-Id header heeft prioriteit (voor org-switcher)
+        companyId = headerCompanyId;
+        context.log('Admin org-switcher: companyId uit header:', companyId);
+      } else {
+        // Gewone gebruikers: altijd uit JWT token
+        companyId = gebruiker[COMPANY_ID_CLAIM] || gebruiker['extn.companyId'] || null;
+        if (!companyId && headerCompanyId && GELDIGE_COMPANY_IDS.includes(headerCompanyId)) {
+          // Fallback: header als JWT claim ontbreekt (extension attr niet in access token)
           companyId = headerCompanyId;
-          context.log('CompanyId uit X-Company-Id header:', companyId);
+          context.log('Fallback: companyId uit header (JWT claim ontbreekt):', companyId);
         }
       }
 
