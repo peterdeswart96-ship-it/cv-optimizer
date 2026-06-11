@@ -210,7 +210,9 @@ function CVPreview() {
             <div style={{ padding: '16px 20px' }}>
               {secties.map((sectie, i) => {
                 const tekst = getTekst(sectie)
-                const regels = tekst.split('\n')
+                // Split op dubbele newlines voor paragraafscheiding
+                // Enkelvoudige newlines blijven gewone regels
+                const paragrafen = tekst.split('\n\n')
 
                 return (
                   <div key={i} style={{ marginBottom: '14px' }}>
@@ -221,20 +223,24 @@ function CVPreview() {
                       </span>
                     </div>
 
-                    {/* Sectie tekst — lege regels worden als witruimte getoond */}
+                    {/* Sectie tekst — dubbele newlines = witruimte, enkele newlines = gewone regelafstand */}
                     <div style={{ fontSize: '9.5px', lineHeight: '1.6', color: '#2d3748' }}>
-                      {regels.map((regel, j) => {
-                        if (!regel.trim()) {
-                          // Lege regel: toon als kleine witruimte
-                          return <div key={j} style={{ height: '4px' }} />
-                        }
-                        const isBullet = regel.trim().startsWith('•')
+                      {paragrafen.map((paragraaf, pi) => {
+                        if (!paragraaf.trim()) return null
+                        const regels = paragraaf.split('\n')
                         return (
-                          <div key={j} style={{
-                            marginBottom: isBullet ? '2px' : '3px',
-                            paddingLeft: isBullet ? '12px' : '0',
-                          }}>
-                            {stripMarkdown(regel.trim())}
+                          <div key={pi} style={{ marginBottom: '4px' }}>
+                            {regels.filter(r => r.trim()).map((regel, j) => {
+                              const isBullet = regel.trim().startsWith('•')
+                              return (
+                                <div key={j} style={{
+                                  marginBottom: isBullet ? '2px' : '1px',
+                                  paddingLeft: isBullet ? '12px' : '0',
+                                }}>
+                                  {stripMarkdown(regel.trim())}
+                                </div>
+                              )
+                            })}
                           </div>
                         )
                       })}
