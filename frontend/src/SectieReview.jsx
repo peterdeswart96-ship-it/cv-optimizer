@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
-import { tekst2Blokken, renderBlokken } from './cvUtils.jsx'
+import { maakBlokken, renderBlokken } from './cvUtils.jsx'
 
 const BACKEND = 'https://func-cv-optimizer-linux.azurewebsites.net/api'
 
 // ─── Mini CV-sectie preview ──────────────────────────────────────────────────
 // Toont een sectie precies zoals die in CVPreview er uit ziet
 function CvSectiePreview({ naam, tekst, highlight = false }) {
-  const blokken = tekst2Blokken(tekst)
+  const blokken = maakBlokken(tekst, null)  // html per sectie niet beschikbaar, tekst2Blokken als fallback
 
   return (
     <div style={{
@@ -288,7 +288,7 @@ function SectieReview() {
             </button>
             <button
               onClick={() => navigate('/cv-preview', {
-                state: { secties, definitieveTeksten, cvTekst }
+                state: { secties, definitieveTeksten, cvTekst, cvHtml }
               })}
               className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
             >

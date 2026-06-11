@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import SectieReview from './SectieReview'
 import CVPreview from './CVPreview'
@@ -441,6 +441,7 @@ function VacatureFavorietenPanel({ onSelecteer, vacatureTekst, onSluiten }) {
 
 function Analyse() {
   const [cvTekst, setCvTekst] = useState('')
+  const [cvHtml, setCvHtml] = useState(null)   // HTML structuur van DOCX upload
   const [vacatureTekst, setVacatureTekst] = useState('')
   const [analyse, setAnalyse] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -488,6 +489,7 @@ function Analyse() {
       const data = await res.json()
       if (data.tekst) {
         setCvTekst(data.tekst)
+        setCvHtml(data.html || null)   // null bij PDF, HTML string bij DOCX
       } else {
         setFout(data.error || 'Kon bestand niet verwerken')
       }
@@ -840,7 +842,7 @@ function Analyse() {
               <h2 className="text-lg font-semibold text-gray-800 mb-2">Klaar om je CV te verbeteren?</h2>
               <p className="text-sm text-gray-600 mb-4">Ga sectie voor sectie door je CV en laat Claude concrete verbeteringsvoorstellen genereren.</p>
               <button
-                onClick={() => navigate('/keyword-feedback', { state: { analyse, cvTekst, vacatureTekst } })}
+                onClick={() => navigate('/keyword-feedback', { state: { analyse, cvTekst, cvHtml, vacatureTekst } })}
                 className="px-8 py-3 font-medium rounded-lg transition-colors"
                 style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
               >

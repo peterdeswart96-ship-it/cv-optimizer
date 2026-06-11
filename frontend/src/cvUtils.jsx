@@ -52,8 +52,15 @@ export function detecteerRegelType(regel) {
   const heeftScheidingsteken = /[|·–—]/.test(r)
 
   // Functietitel + periode: heeft jaar én scheidingsteken
+  // Maar alleen als het deel VOOR het scheidingsteken kort is (<= 5 woorden)
+  // "Senior Engineer — Blacktang 2022" = subkop
+  // "Get started with identities and access using Microsoft Entra — Feb 2026" = GEEN subkop
   if (!eindigtOpLeesteken && heeftJarenPatroon && heeftScheidingsteken) {
-    return 'subkop'
+    const deelVoorScheidingsteken = r.split(/[|·–—]/)[0].trim()
+    const aantalWoorden = deelVoorScheidingsteken.split(/\s+/).length
+    if (aantalWoorden <= 6) {
+      return 'subkop'
+    }
   }
 
   // Categorie-label: kort (<= 40 tekens), geen leesteken, begint met hoofdletter,
@@ -111,6 +118,127 @@ export function tekst2Blokken(tekst) {
   }
 
   return blokken
+}
+
+
+// ─── HTML → blokken ─────────────────────────────────────────────────────────
+// Converteert mammoth HTML naar getypeerde blokken
+// Bewaart de originele structuur van het DOCX bestand exact
+// Wordt alleen gebruikt als er HTML beschikbaar is (DOCX upload)
+
+export function html2Blokken(html) {
+  if (!html) return []
+
+  const blokken = []
+
+  // Verwijder de outer wrapper als die er is
+  const schone = html.trim()
+
+  // Splits op HTML block-elementen
+  // We verwerken regel voor regel door de HTML te parsen
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(`<div>${schone}</div>`, 'text/html')
+  const root = doc.querySelector('div')
+
+  function verwerkNode(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const tekst = node.textContent.trim()
+      if (tekst) {
+        blokken.push({ type: 'tekst', tekst })
+      }
+      return
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) return
+
+    const tag = node.tagName.toLowerCase()
+    const tekst = node.textContent.trim()
+
+    if (!tekst) {
+      // Lege block-elementen = witregel
+      if (['p', 'div', 'br'].includes(tag)) {
+        if (blokken.length > 0 && blokken[blokken.length - 1].type !== 'witregel') {
+          blokken.push({ type: 'witregel' })
+        }
+      }
+      return
+    }
+
+    // Headings → subkop
+    if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag)) {
+      blokken.push({ type: 'subkop', tekst })
+      return
+    }
+
+    // Lijstitems → bullet
+    if (tag === 'li') {
+      blokken.push({ type: 'bullet', tekst })
+      return
+    }
+
+    // ul/ol → verwerk kinderen (de li's)
+    if (tag === 'ul' || tag === 'ol') {
+      for (const kind of node.children) {
+        verwerkNode(kind)
+      }
+      return
+    }
+
+    // Paragraaf of div
+    if (tag === 'p' || tag === 'div') {
+      // Check of de paragraaf alleen bold/strong tekst bevat → subkop
+      const heeftAlleenBold = node.children.length > 0 &&
+        Array.from(node.children).every(k => ['strong', 'b', 'em'].includes(k.tagName.toLowerCase())) &&
+        node.children.length === node.childNodes.length
+
+      // Of de gehele paragraaf is omhuld door strong/b
+      const isVetGedrukt = (tag === 'p' && node.querySelector('strong, b') &&
+        node.querySelector('strong, b').textContent.trim() === tekst)
+
+      if (heeftAlleenBold || isVetGedrukt) {
+        blokken.push({ type: 'subkop', tekst })
+      } else {
+        // Verwerk inline elementen — extraheer gewoon de tekst
+        blokken.push({ type: 'tekst', tekst })
+      }
+
+      // Witregel na elke paragraaf als de volgende ook een paragraaf is
+      // (dit bewaart de originele regelafstand)
+      return
+    }
+
+    // strong/b/em als standalone (niet in p) → subkop
+    if (['strong', 'b'].includes(tag)) {
+      blokken.push({ type: 'subkop', tekst })
+      return
+    }
+
+    // Alles anders: verwerk kinderen
+    for (const kind of node.childNodes) {
+      verwerkNode(kind)
+    }
+  }
+
+  for (const kind of root.childNodes) {
+    verwerkNode(kind)
+  }
+
+  // Trailing witregels weghalen
+  while (blokken.length > 0 && blokken[blokken.length - 1].type === 'witregel') {
+    blokken.pop()
+  }
+
+  return blokken
+}
+
+// ─── Universele blokken parser ───────────────────────────────────────────────
+// Kiest automatisch html2Blokken of tekst2Blokken op basis van beschikbare data
+
+export function maakBlokken(tekst, html) {
+  if (html && html.trim().length > 0) {
+    return html2Blokken(html)
+  }
+  return tekst2Blokken(tekst)
 }
 
 // ─── CV Header parser ───────────────────────────────────────────────────────

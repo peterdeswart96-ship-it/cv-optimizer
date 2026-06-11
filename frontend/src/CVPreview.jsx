@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import html2pdf from 'html2pdf.js'
 import { Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle } from 'docx'
 import {
-  tekst2Blokken,
+  maakBlokken,
   renderBlokken,
   blokken2DocxParagraphs,
   parseHeader,
@@ -13,7 +13,7 @@ import {
 function CVPreview() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { secties, definitieveTeksten, cvTekst } = location.state || {}
+  const { secties, definitieveTeksten, cvTekst, cvHtml } = location.state || {}
   const cvRef = useRef(null)
   const [bewerkenIndex, setBewerkenIndex] = useState(null)
   const [bewerkTeksten, setBewerkTeksten] = useState({})
@@ -96,7 +96,8 @@ function CVPreview() {
     // Secties
     for (const sectie of secties) {
       const tekst = getTekst(sectie)
-      const blokken = tekst2Blokken(tekst)
+      // Sectie-tekst is altijd plat — maakBlokken gebruikt tekst2Blokken als fallback
+      const blokken = maakBlokken(tekst, null)
 
       // Sectie titel
       children.push(new Paragraph({
@@ -249,7 +250,10 @@ function CVPreview() {
             <div style={{ padding: '16px 20px' }}>
               {secties.map((sectie, i) => {
                 const tekst = getTekst(sectie)
-                const blokken = tekst2Blokken(tekst)
+                // Sectie-tekst is altijd plat (komt van Claude of gebruiker input)
+                // cvHtml is de originele DOCX structuur, maar per sectie gebruiken we tekst
+                // maakBlokken valt terug op tekst2Blokken omdat html per sectie null is
+                const blokken = maakBlokken(tekst, null)
 
                 return (
                   <div key={i} style={{ marginBottom: '14px' }}>
