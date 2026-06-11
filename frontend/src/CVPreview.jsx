@@ -75,10 +75,11 @@ function CVPreview() {
         scale: 2,
         useCORS: true,
         letterRendering: true,
-        scrollY: 0
+        scrollY: 0,
+        windowWidth: 794
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: 'avoid-all' }
+      pagebreak: { mode: ['css', 'legacy'] }
     }
     html2pdf().set(opt).from(element).save()
   }
@@ -112,11 +113,7 @@ function CVPreview() {
         border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '1a3a5c' } }
       }))
       for (const regel of tekst.split('\n')) {
-        if (!regel.trim()) {
-          // Lege regel: voeg lege paragraaf toe voor witruimte in Word export
-          children.push(new Paragraph({ spacing: { before: 40, after: 40 } }))
-          continue
-        }
+        if (!regel.trim()) continue // Lege regels overslaan in Word export
         const isBullet = regel.trim().startsWith('•')
         children.push(new Paragraph({
           children: [new TextRun({ text: stripMarkdown(regel.trim()), size: 19, color: '2d3748' })],
