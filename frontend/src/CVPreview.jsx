@@ -111,7 +111,12 @@ function CVPreview() {
         spacing: { before: 300, after: 80 },
         border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '1a3a5c' } }
       }))
-      for (const regel of tekst.split('\n').filter(r => r.trim())) {
+      for (const regel of tekst.split('\n')) {
+        // Lege regel: voeg lege paragraaf toe voor witruimte
+        if (!regel.trim()) {
+          sectionChildren.push(new Paragraph({ spacing: { before: 40, after: 40 } }))
+          continue
+        }
         const isBullet = regel.trim().startsWith('•')
         children.push(new Paragraph({
           children: [new TextRun({ text: stripMarkdown(regel.trim()), size: 19, color: '2d3748' })],
@@ -208,7 +213,7 @@ function CVPreview() {
             <div style={{ padding: '16px 20px' }}>
               {secties.map((sectie, i) => {
                 const tekst = getTekst(sectie)
-                const regels = tekst.split('\n').filter(r => r.trim())
+                const regels = tekst.split('\n')
 
                 return (
                   <div key={i} style={{ marginBottom: '14px' }}>
@@ -219,9 +224,13 @@ function CVPreview() {
                       </span>
                     </div>
 
-                    {/* Sectie tekst */}
+                    {/* Sectie tekst — lege regels worden als witruimte getoond */}
                     <div style={{ fontSize: '9.5px', lineHeight: '1.6', color: '#2d3748' }}>
                       {regels.map((regel, j) => {
+                        if (!regel.trim()) {
+                          // Lege regel: toon als kleine witruimte
+                          return <div key={j} style={{ height: '4px' }} />
+                        }
                         const isBullet = regel.trim().startsWith('•')
                         return (
                           <div key={j} style={{
