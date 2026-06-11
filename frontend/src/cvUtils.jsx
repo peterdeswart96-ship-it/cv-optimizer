@@ -36,14 +36,35 @@ export function detecteerRegelType(regel) {
     return 'bullet'
   }
 
-  // Subkop: korte regel (<= 60 tekens), eindigt NIET op leesteken, geen lowercase begin
-  // Patronen: "Functietitel — Bedrijf", "2018 – 2022", "Senior Engineer | Blacktang"
-  const isKort = r.length <= 70
-  const eindigtOpLeesteken = /[.,;]$/.test(r)
-  const heeftJarenPatroon = /\b(19|20)\d{2}\b/.test(r)
-  const heeftScheidingsteken = /[|•·–—\/]/.test(r)
+  // Nooit subkop: regels die beginnen met ( zijn certificaten/codes
+  // bijv. "(SC-401) Information Security Administrator Associate — Apr 2027"
+  if (r.startsWith('(')) {
+    return 'tekst'
+  }
 
-  if (isKort && !eindigtOpLeesteken && (heeftJarenPatroon || heeftScheidingsteken)) {
+  // Nooit subkop: lange regels (> 80 tekens) zijn altijd gewone tekst
+  if (r.length > 80) {
+    return 'tekst'
+  }
+
+  const eindigtOpLeesteken = /[.,;]$/.test(r)
+  const heeftJarenPatroon  = /\b(19|20)\d{2}\b/.test(r)
+  const heeftScheidingsteken = /[|·–—]/.test(r)
+
+  // Functietitel + periode: heeft jaar én scheidingsteken
+  if (!eindigtOpLeesteken && heeftJarenPatroon && heeftScheidingsteken) {
+    return 'subkop'
+  }
+
+  // Categorie-label: kort (<= 40 tekens), geen leesteken, begint met hoofdletter,
+  // geen cijfers, geen haakjes — bijv. "Microsoft 365 & Cloud", "Azure"
+  const isCategorie = r.length <= 40
+    && !eindigtOpLeesteken
+    && /^[A-Z]/.test(r)
+    && !/\d/.test(r)
+    && !/[()[\]]/.test(r)
+
+  if (isCategorie) {
     return 'subkop'
   }
 
