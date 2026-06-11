@@ -2,26 +2,13 @@ import { useState, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import html2pdf from 'html2pdf.js'
 import { Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle } from 'docx'
-
-function stripMarkdown(tekst) {
-  if (!tekst) return ''
-  return tekst
-    .replace(/\*\*(.+?)\*\*/g, '$1')
-    .replace(/\*(.+?)\*/g, '$1')
-    .replace(/^#{1,6}\s+/gm, '')
-    .trim()
-}
-
-function vervangDashes(tekst) {
-  if (!tekst) return ''
-  return tekst
-    .replace(/^[\s]*[–—]+\s*/gm, '• ')
-    .replace(/\n[\s]*[–—]+\s*/g, '\n• ')
-}
-
-function verwerkTekst(tekst) {
-  return vervangDashes(stripMarkdown(tekst))
-}
+import {
+  tekst2Blokken,
+  renderBlokken,
+  blokken2DocxParagraphs,
+  parseHeader,
+  stripMarkdown
+} from './cvUtils'
 
 function CVPreview() {
   const location = useLocation()
@@ -37,7 +24,10 @@ function CVPreview() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-600 mb-4">Geen CV data gevonden.</p>
-          <button onClick={() => navigate('/')} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          <button
+            onClick={() => navigate('/')}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
             ← Terug naar analyse
           </button>
         </div>
@@ -45,26 +35,17 @@ function CVPreview() {
     )
   }
 
+  // ── Tekst ophalen per sectie ─────────────────────────────────────────────
   const getTekst = (sectie) => {
-    const tekst = bewerkTeksten[sectie.naam] ?? definitieveTeksten[sectie.naam] ?? sectie.originele_tekst
-    return verwerkTekst(tekst)
+    return bewerkTeksten[sectie.naam]
+      ?? definitieveTeksten[sectie.naam]
+      ?? sectie.originele_tekst
+      ?? ''
   }
 
-  const parseHeader = () => {
-    if (!cvTekst) return null
-    const regels = cvTekst.split('\n')
-    const headerRegels = []
-    for (const regel of regels) {
-      const r = regel.trim()
-      if (!r) continue
-      if (secties.some(s => r.toUpperCase() === s.naam.toUpperCase())) break
-      headerRegels.push(r)
-    }
-    return headerRegels.length > 0 ? headerRegels : null
-  }
+  const headerRegels = parseHeader(cvTekst, secties)
 
-  const headerRegels = parseHeader()
-
+  // ── PDF download ─────────────────────────────────────────────────────────
   const downloadPDF = async () => {
     const element = cvRef.current
     const opt = {
@@ -84,18 +65,25 @@ function CVPreview() {
     html2pdf().set(opt).from(element).save()
   }
 
+  // ── DOCX download ────────────────────────────────────────────────────────
   const downloadDOCX = async () => {
     const children = []
 
-    if (headerRegels) {
-      if (headerRegels[0]) children.push(new Paragraph({
-        children: [new TextRun({ text: headerRegels[0], bold: true, size: 30, color: '1a3a5c' })],
-        alignment: AlignmentType.LEFT, spacing: { after: 60 }
-      }))
-      if (headerRegels[1]) children.push(new Paragraph({
-        children: [new TextRun({ text: headerRegels[1], size: 22, color: '4a5568' })],
-        spacing: { after: 60 }
-      }))
+    // Header blok
+    if (headerRegels.length > 0) {
+      if (headerRegels[0]) {
+        children.push(new Paragraph({
+          children: [new TextRun({ text: headerRegels[0], bold: true, size: 30, color: '1a3a5c' })],
+          alignment: AlignmentType.LEFT,
+          spacing: { after: 60 }
+        }))
+      }
+      if (headerRegels[1]) {
+        children.push(new Paragraph({
+          children: [new TextRun({ text: headerRegels[1], size: 22, color: '4a5568' })],
+          spacing: { after: 60 }
+        }))
+      }
       for (let i = 2; i < headerRegels.length; i++) {
         children.push(new Paragraph({
           children: [new TextRun({ text: headerRegels[i], size: 18, color: '718096' })],
@@ -105,22 +93,28 @@ function CVPreview() {
       children.push(new Paragraph({ spacing: { after: 200 } }))
     }
 
+    // Secties
     for (const sectie of secties) {
       const tekst = getTekst(sectie)
+      const blokken = tekst2Blokken(tekst)
+
+      // Sectie titel
       children.push(new Paragraph({
-        children: [new TextRun({ text: sectie.naam.toUpperCase(), bold: true, size: 20, color: '1a3a5c' })],
+        children: [new TextRun({
+          text: sectie.naam.toUpperCase(),
+          bold: true,
+          size: 20,
+          color: '1a3a5c'
+        })],
         spacing: { before: 300, after: 80 },
-        border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '1a3a5c' } }
+        border: {
+          bottom: { style: BorderStyle.SINGLE, size: 6, color: '1a3a5c' }
+        }
       }))
-      for (const regel of tekst.split('\n')) {
-        if (!regel.trim()) continue // Lege regels overslaan in Word export
-        const isBullet = regel.trim().startsWith('•')
-        children.push(new Paragraph({
-          children: [new TextRun({ text: stripMarkdown(regel.trim()), size: 19, color: '2d3748' })],
-          indent: isBullet ? { left: 200 } : {},
-          spacing: { after: 60 }
-        }))
-      }
+
+      // Sectie inhoud via gedeelde blokken-builder
+      const paragraphs = blokken2DocxParagraphs(blokken, { Paragraph, TextRun })
+      children.push(...paragraphs)
     }
 
     const doc = new Document({ sections: [{ properties: {}, children }] })
@@ -133,6 +127,7 @@ function CVPreview() {
     URL.revokeObjectURL(url)
   }
 
+  // ── Bewerken ─────────────────────────────────────────────────────────────
   const startBewerken = (i, tekst) => {
     setBewerkenIndex(i)
     setBewerkWaarden(prev => ({ ...prev, [i]: tekst }))
@@ -145,51 +140,95 @@ function CVPreview() {
 
   return (
     <div className="min-h-screen bg-gray-200">
+
       {/* Toolbar */}
       <div className="bg-white border-b border-gray-200 px-6 py-3 sticky top-0 z-10 shadow-sm">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-lg font-bold text-gray-900">CV Preview</h1>
-            <p className="text-xs text-gray-500">Gebruik de bewerken knoppen hieronder voor aanpassingen</p>
+            <p className="text-xs text-gray-500">Klik op een sectieknop onderaan om tekst te bewerken</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => navigate(-1)} className="px-3 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50">← Terug</button>
-            <button onClick={downloadDOCX} className="px-4 py-2 border border-blue-300 text-blue-700 text-sm rounded-lg hover:bg-blue-50">↓ Word (.docx)</button>
-            <button onClick={downloadPDF} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">↓ PDF downloaden</button>
+            <button
+              onClick={() => navigate(-1)}
+              className="px-3 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50"
+            >
+              ← Terug
+            </button>
+            <button
+              onClick={downloadDOCX}
+              className="px-4 py-2 border border-blue-300 text-blue-700 text-sm rounded-lg hover:bg-blue-50"
+            >
+              ↓ Word (.docx)
+            </button>
+            <button
+              onClick={downloadPDF}
+              className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+            >
+              ↓ PDF downloaden
+            </button>
           </div>
         </div>
       </div>
 
       <div className="max-w-3xl mx-auto px-4 py-8">
 
-        {/* Bewerken panel — buiten cvRef */}
+        {/* Bewerken panel — buiten cvRef zodat het niet in de PDF/DOCX komt */}
         {bewerkenIndex !== null && (
           <div className="bg-white border border-blue-300 rounded-xl p-4 mb-4 shadow">
             <p className="text-sm font-medium text-gray-700 mb-2">
               ✏️ Bewerken: <strong>{secties[bewerkenIndex]?.naam}</strong>
             </p>
+            <p className="text-xs text-gray-400 mb-3">
+              Gebruik enters voor nieuwe regels. Begin een regel met • voor een bullet punt.
+            </p>
             <textarea
               value={bewerkWaarden[bewerkenIndex] ?? ''}
               onChange={(e) => setBewerkWaarden(prev => ({ ...prev, [bewerkenIndex]: e.target.value }))}
               className="w-full p-3 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400"
-              style={{ minHeight: `${Math.max(120, ((bewerkWaarden[bewerkenIndex] ?? '').split('\n').length + 10) * 22)}px` }}
+              style={{
+                minHeight: `${Math.max(120, ((bewerkWaarden[bewerkenIndex] ?? '').split('\n').length + 4) * 22)}px`
+              }}
             />
-            <div className="flex gap-3 mt-2">
-              <button onClick={() => slaOp(secties[bewerkenIndex].naam, bewerkenIndex)} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Opslaan</button>
-              <button onClick={() => setBewerkenIndex(null)} className="px-4 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50">Annuleren</button>
+            <div className="flex gap-3 mt-3">
+              <button
+                onClick={() => slaOp(secties[bewerkenIndex].naam, bewerkenIndex)}
+                className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+              >
+                Opslaan
+              </button>
+              <button
+                onClick={() => setBewerkenIndex(null)}
+                className="px-4 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50"
+              >
+                Annuleren
+              </button>
             </div>
           </div>
         )}
 
-        {/* CV Document — alleen dit naar PDF */}
+        {/* ── CV Document — alleen dit blok naar PDF ── */}
         <div className="bg-white shadow-xl">
-          <div ref={cvRef} style={{ fontFamily: "'Arial', 'Helvetica', sans-serif", color: '#2d3748' }}>
+          <div
+            ref={cvRef}
+            style={{ fontFamily: "'Arial', 'Helvetica', sans-serif", color: '#2d3748' }}
+          >
 
             {/* Header — donkerblauw vlak */}
-            {headerRegels && (
-              <div style={{ backgroundColor: '#1a3a5c', padding: '16px 20px 14px 20px', color: 'white' }}>
+            {headerRegels.length > 0 && (
+              <div style={{
+                backgroundColor: '#1a3a5c',
+                padding: '16px 20px 14px 20px',
+                color: 'white'
+              }}>
                 {headerRegels[0] && (
-                  <div style={{ fontSize: '20px', fontWeight: 'bold', letterSpacing: '1px', marginBottom: '3px', textTransform: 'uppercase' }}>
+                  <div style={{
+                    fontSize: '20px',
+                    fontWeight: 'bold',
+                    letterSpacing: '1px',
+                    marginBottom: '3px',
+                    textTransform: 'uppercase'
+                  }}>
                     {headerRegels[0]}
                   </div>
                 )}
@@ -206,61 +245,60 @@ function CVPreview() {
               </div>
             )}
 
-            {/* Alle secties onder elkaar */}
+            {/* Secties */}
             <div style={{ padding: '16px 20px' }}>
               {secties.map((sectie, i) => {
                 const tekst = getTekst(sectie)
-                // Split op dubbele newlines voor paragraafscheiding
-                // Enkelvoudige newlines blijven gewone regels
-                const paragrafen = tekst.split('\n\n')
+                const blokken = tekst2Blokken(tekst)
 
                 return (
                   <div key={i} style={{ marginBottom: '14px' }}>
+
                     {/* Sectie titel */}
-                    <div style={{ borderBottom: '1.5px solid #1a3a5c', marginBottom: '6px', paddingBottom: '2px' }}>
-                      <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#1a3a5c', letterSpacing: '0.8px', textTransform: 'uppercase' }}>
+                    <div style={{
+                      borderBottom: '1.5px solid #1a3a5c',
+                      marginBottom: '6px',
+                      paddingBottom: '2px'
+                    }}>
+                      <span style={{
+                        fontSize: '10px',
+                        fontWeight: 'bold',
+                        color: '#1a3a5c',
+                        letterSpacing: '0.8px',
+                        textTransform: 'uppercase'
+                      }}>
                         {sectie.naam}
                       </span>
                     </div>
 
-                    {/* Sectie tekst — dubbele newlines = witruimte, enkele newlines = gewone regelafstand */}
-                    <div style={{ fontSize: '9.5px', lineHeight: '1.6', color: '#2d3748' }}>
-                      {paragrafen.map((paragraaf, pi) => {
-                        if (!paragraaf.trim()) return null
-                        const regels = paragraaf.split('\n')
-                        return (
-                          <div key={pi} style={{ marginBottom: '4px' }}>
-                            {regels.filter(r => r.trim()).map((regel, j) => {
-                              const isBullet = regel.trim().startsWith('•')
-                              return (
-                                <div key={j} style={{
-                                  marginBottom: isBullet ? '2px' : '1px',
-                                  paddingLeft: isBullet ? '12px' : '0',
-                                }}>
-                                  {stripMarkdown(regel.trim())}
-                                </div>
-                              )
-                            })}
-                          </div>
-                        )
-                      })}
+                    {/* Sectie inhoud via gedeelde render */}
+                    <div>
+                      {renderBlokken(blokken, 'document')}
                     </div>
+
                   </div>
                 )
               })}
             </div>
           </div>
         </div>
+        {/* ── einde CV Document ── */}
 
         {/* Bewerken knoppen — buiten cvRef */}
         <div className="mt-4 bg-white rounded-xl border border-gray-200 p-4">
-          <p className="text-xs font-medium text-gray-500 mb-3">Sectie bewerken (niet zichtbaar in PDF/Word)</p>
+          <p className="text-xs font-medium text-gray-500 mb-3">
+            Sectie bewerken (niet zichtbaar in PDF / Word)
+          </p>
           <div className="flex flex-wrap gap-2">
             {secties.map((sectie, i) => (
               <button
                 key={i}
                 onClick={() => startBewerken(i, getTekst(sectie))}
-                className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${bewerkenIndex === i ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'}`}
+                className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+                  bewerkenIndex === i
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
+                }`}
               >
                 ✏️ {sectie.naam}
               </button>
@@ -269,7 +307,7 @@ function CVPreview() {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-3">
-          Bewerken knoppen zijn niet zichtbaar in de PDF of Word download
+          Bewerkknoppen zijn niet zichtbaar in de PDF of Word download
         </p>
       </div>
     </div>

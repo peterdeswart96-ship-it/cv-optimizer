@@ -11,7 +11,7 @@ const corsHeaders = {
   'Content-Type': 'application/json'
 };
 
-// ─── Rate limiter (gedeeld patroon met analyze.js) ────────────────────────────
+// ─── Rate limiter ─────────────────────────────────────────────────────────────
 const rateLimitMap = new Map();
 const RATE_LIMIT_MAX = 30;
 const RATE_LIMIT_VENSTER_MS = 60 * 60 * 1000;
@@ -45,12 +45,18 @@ function safeParse(text) {
   try {
     return JSON.parse(t);
   } catch {
+    // Fallback: probeer losse velden te extraheren als JSON.parse mislukt
     const score = t.match(/"score"\s*:\s*(\d+)/)?.[1] || '-';
     const relevantie = t.match(/"relevantie"\s*:\s*"([^"]+)"/)?.[1] || '';
-    const sterkePunten = (t.match(/"sterkePunten"\s*:\s*\[([\s\S]*?)\]/)?.[1] || '').match(/"([^"]+)"/g)?.map(s => s.slice(1, -1)) || [];
-    const verbeterpunten = (t.match(/"verbeterpunten"\s*:\s*\[([\s\S]*?)\]/)?.[1] || '').match(/"([^"]+)"/g)?.map(s => s.slice(1, -1)) || [];
-    const herschreven = t.match(/"herschreven"\s*:\s*"([\s\S]*?)(?:"\s*\}|$)/)?.[1]?.replace(/\\n/g, '\n').replace(/\\"/g, '"') || null;
-    return { score, relevantie, sterkePunten, verbeterpunten, herschreven };
+    const sterkePunten = (t.match(/"sterkePunten"\s*:\s*\[([\s\S]*?)\]/)?.[1] || '')
+      .match(/"([^"]+)"/g)?.map(s => s.slice(1, -1)) || [];
+    const verbeterpunten = (t.match(/"verbeterpunten"\s*:\s*\[([\s\S]*?)\]/)?.[1] || '')
+      .match(/"([^"]+)"/g)?.map(s => s.slice(1, -1)) || [];
+    const herschreven = t.match(/"herschreven"\s*:\s*"([\s\S]*?)(?:"\s*\}|$)/)?.[1]
+      ?.replace(/\\n/g, '\n').replace(/\\"/g, '"') || null;
+    const layout_tips = (t.match(/"layout_tips"\s*:\s*\[([\s\S]*?)\]/)?.[1] || '')
+      .match(/"([^"]+)"/g)?.map(s => s.slice(1, -1)) || [];
+    return { score, relevantie, sterkePunten, verbeterpunten, herschreven, layout_tips };
   }
 }
 
@@ -73,9 +79,8 @@ app.http('analyze-section', {
         body: JSON.stringify({ error: 'Niet geautoriseerd', details: err.message })
       };
     }
-    // ────────────────────────────────────────────────────────────────────────
 
-    // ── Rate limiting op gebruikers-ID (betrouwbaarder dan IP) ──────────────
+    // ── Rate limiting op gebruikers-ID ───────────────────────────────────────
     const rateLimitSleutel = gebruiker.sub || gebruiker.oid || 'onbekend';
     const limiet = checkRateLimit(rateLimitSleutel);
     if (!limiet.toegestaan) {
@@ -88,7 +93,6 @@ app.http('analyze-section', {
         })
       };
     }
-    // ────────────────────────────────────────────────────────────────────────
 
     try {
       const body = await request.json();
@@ -99,7 +103,8 @@ app.http('analyze-section', {
         ontbrekende_keywords,
         tone_aanbeveling,
         keyword_context,
-        eigen_instructie
+        eigen_instructie,
+        layout_analyse   // boolean — stuur layout_tips mee in output
       } = body;
 
       if (!sectie_naam || !sectie_inhoud || !vacature_tekst) {
@@ -110,8 +115,8 @@ app.http('analyze-section', {
         };
       }
 
-      // Lengtebegrenzing als extra bescherming (AVG: minimale verwerking)
-      const veiligeSectie = sectie_inhoud.substring(0, 4000);
+      // Lengtebegrenzing (AVG: minimale verwerking)
+      const veiligeSectie  = sectie_inhoud.substring(0, 4000);
       const veiligVacature = vacature_tekst.substring(0, 2000);
 
       context.log('Analyze-section gestart voor sectie:', sectie_naam);
@@ -119,9 +124,11 @@ app.http('analyze-section', {
       let prompt;
 
       if (eigen_instructie) {
-        // Eigen instructie modus — gebruiker geeft zelf aan wat hij wil
+        // ── Eigen instructie modus ─────────────────────────────────────────
         const veiligInstructie = eigen_instructie.substring(0, 500);
-        prompt = `Je bent een professionele loopbaancoach. De gebruiker wil sectie "${sectie_naam}" aanpassen met de volgende instructie:
+
+        prompt = `Je bent een professionele loopbaancoach.
+De gebruiker wil sectie "${sectie_naam}" aanpassen met de volgende instructie:
 
 <instructie>
 ${veiligInstructie}
@@ -134,11 +141,18 @@ ${veiligeSectie}
 
 Herschrijf de sectie exact volgens de instructie van de gebruiker.
 Behoud de originele feiten — verzin niets bij.
+
+Opmaakregels voor "herschreven":
+- Gebruik \\n voor een nieuwe regel
+- Gebruik • aan het begin van een regel voor bullets (bijv. "• Beheerde een team van 5 mensen")
+- Zet functietitels en periodes op een aparte regel
+- Laat een lege regel (\\n\\n) tussen verschillende functies of periodes
+
 Geef ALLEEN geldige JSON terug:
-{"score":"-","relevantie":"Aangepast op basis van eigen instructie","sterkePunten":[],"verbeterpunten":[],"herschreven":"<de herschreven sectietekst>"}`;
+{"score":"-","relevantie":"Aangepast op basis van eigen instructie","sterkePunten":[],"verbeterpunten":[],"layout_tips":[],"herschreven":"<de herschreven sectietekst>"}`;
 
       } else {
-        // Standaard analyse modus
+        // ── Standaard analyse modus ────────────────────────────────────────
         const keywordsStr = ontbrekende_keywords?.length
           ? `\nOntbrekende keywords om te verwerken: ${ontbrekende_keywords.join(', ')}`
           : '';
@@ -147,6 +161,9 @@ Geef ALLEEN geldige JSON terug:
           : '';
         const contextStr = keyword_context
           ? `\nExtra context van de gebruiker:\n${keyword_context.substring(0, 300)}`
+          : '';
+        const layoutStr = layout_analyse
+          ? `\nBeoordeel ook de opmaak van de sectie en geef maximaal 3 concrete layout_tips (of een lege array als de opmaak al goed is). Voorbeelden van goede layout_tips: "Zet elke functie op een aparte regel", "Gebruik bullet points voor taken en resultaten", "Splits lange alinea in kortere bullets".`
           : '';
 
         prompt = `Je bent een professionele loopbaancoach en recruitment specialist met 15 jaar ervaring.
@@ -161,7 +178,14 @@ Vacature:
 <vacature>
 ${veiligVacature}
 </vacature>
-${keywordsStr}${toneStr}${contextStr}
+${keywordsStr}${toneStr}${contextStr}${layoutStr}
+
+Opmaakregels voor "herschreven":
+- Gebruik \\n voor een nieuwe regel
+- Gebruik • aan het begin van een regel voor bullets (bijv. "• Beheerde een team van 5 mensen")
+- Zet functietitels en periodes op een aparte regel
+- Laat een lege regel (\\n\\n) tussen verschillende functies of periodes
+- Zorg voor een strakke, leesbare opmaak zonder overbodige witregels
 
 Geef ALLEEN geldige JSON terug:
 {
@@ -169,6 +193,7 @@ Geef ALLEEN geldige JSON terug:
   "relevantie": "<1 zin: hoe relevant is deze sectie voor de vacature>",
   "sterkePunten": ["<punt>", "<punt>"],
   "verbeterpunten": ["<punt>", "<punt>"],
+  "layout_tips": ["<tip 1>", "<tip 2>"],
   "herschreven": "<verbeterde versie van de sectie, volledig uitgeschreven, gebruik apostrofs ipv aanhalingstekens in de tekst>"
 }`;
       }
