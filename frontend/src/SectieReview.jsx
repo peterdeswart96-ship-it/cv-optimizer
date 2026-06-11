@@ -20,11 +20,11 @@ function SectieReview() {
   const [definitieveTeksten, setDefinitieveTeksten] = useState({})
   const [klaar, setKlaar] = useState(false)
 
-  if (!analyse) {
+  if (!analyse || !analyse.secties || analyse.secties.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Geen analyse gevonden. Doe eerst een analyse.</p>
+          <p className="text-gray-600 mb-4">Geen analyse gevonden. Doe eerst een analyse of laad je CV in.</p>
           <button
             onClick={() => navigate('/')}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"

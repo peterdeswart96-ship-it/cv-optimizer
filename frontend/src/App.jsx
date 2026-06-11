@@ -532,6 +532,53 @@ function Analyse() {
     }
   }
 
+  const directBewerken = async () => {
+    if (!cvTekst) {
+      setFout('Voer eerst je CV in.')
+      return
+    }
+    setLoading(true)
+    setFout(null)
+    try {
+      const token = await getToken()
+      const headers = { 'Content-Type': 'application/json' }
+      if (token) headers['Authorization'] = `Bearer ${token}`
+
+      // Stuur CV naar extract endpoint om secties te detecteren
+      const response = await fetch(`${BACKEND}/extract`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ cv_tekst: cvTekst })
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Er ging iets mis')
+
+      // Maak minimale analyse zonder match score
+      const minimaleAnalyse = {
+        taal: 'nl',
+        match_score: null,
+        ontbrekende_keywords: [],
+        aanwezige_keywords: [],
+        tone_aanbeveling: '',
+        secties: data.secties || []
+      }
+
+      navigate('/sectie-review', {
+        state: {
+          analyse: minimaleAnalyse,
+          cvTekst,
+          vacatureTekst: vacatureTekst || '',
+          keywordContext: null,
+          geselecteerdeKeywords: [],
+          keywordSecties: {}
+        }
+      })
+    } catch (err) {
+      setFout(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const scoreKleur = (score) => {
     if (score >= 75) return 'text-green-600'
     if (score >= 50) return 'text-yellow-600'
@@ -688,14 +735,22 @@ function Analyse() {
         )}
 
         {!analyse && (
-          <div className="mt-6 flex justify-center">
+          <div className="mt-6 flex flex-col items-center gap-3">
             <button
               onClick={analyseer}
               disabled={loading || !cvTekst || !vacatureTekst || cvTekst.length > MAX_CV_TEKENS || vacatureTekst.length > MAX_VACATURE_TEKENS}
               className="px-8 py-3 font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
             >
-              {loading ? 'Analyseren...' : 'Analyseer mijn CV'}
+              {loading ? 'Analyseren...' : 'Vergelijk de CV met de vacature'}
+            </button>
+            <button
+              onClick={directBewerken}
+              disabled={loading || !cvTekst || cvTekst.length > MAX_CV_TEKENS}
+              className="px-6 py-2 text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              style={{ backgroundColor: 'transparent', color: isDonker(branding.achtergrondkleur) ? '#9CA3AF' : '#6B7280', border: `1px solid ${isDonker(branding.achtergrondkleur) ? '#374151' : '#D1D5DB'}` }}
+            >
+              {loading ? 'Laden...' : 'Skip analyse en bewerk direct de CV'}
             </button>
           </div>
         )}
