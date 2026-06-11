@@ -54,55 +54,28 @@ app.http('upload', {
         };
       }
 
-      // Bestandstype validatie
+      // Bestandstype validatie — alleen op extensie én MIME type
       const toegestaneTypes = ['.pdf', '.docx'];
       const isGeldigeExtensie = toegestaneTypes.some(ext => bestandsnaam.endsWith(ext));
       if (!isGeldigeExtensie) {
         return { status: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Alleen .pdf en .docx bestanden zijn toegestaan' }) };
       }
 
+      // Log alleen metadata, nooit bestandsinhoud (AVG: minimale logging)
       context.log('Bestand ontvangen — grootte:', buffer.length, 'bytes, type:', bestandsnaam.split('.').pop());
 
       let tekst = '';
-      let html = null;      // Alleen gevuld bij DOCX — bewaart originele opmaak
-      let bestandType = ''; // 'pdf' of 'docx'
 
       if (bestandsnaam.endsWith('.pdf')) {
-        // PDF: alleen platte tekst mogelijk
         const data = await pdfParse(buffer);
         tekst = data.text;
-        bestandType = 'pdf';
         context.log('PDF geparsed — paginas:', data.numpages);
-
       } else if (bestandsnaam.endsWith('.docx')) {
-        // DOCX: haal ZOWEL platte tekst als HTML op
-        // HTML bewaart de originele structuur (headings, bold, bullets)
-        const [tekstResult, htmlResult] = await Promise.all([
-          mammoth.extractRawText({ buffer }),
-          mammoth.convertToHtml({ buffer }, {
-            // Mammoth opties: zet standaard Word styles om naar semantische HTML
-            styleMap: [
-              "p[style-name='Heading 1'] => h2:fresh",
-              "p[style-name='Heading 2'] => h3:fresh",
-              "p[style-name='Heading 3'] => h4:fresh",
-              "b => strong",
-              "i => em"
-            ]
-          })
-        ]);
-
-        tekst = tekstResult.value;
-        html  = htmlResult.value;
-        bestandType = 'docx';
-        context.log('DOCX geparsed — tekst:', tekst.length, 'tekens, html:', html.length, 'tekens');
-
-        // Log eventuele mammoth waarschuwingen (bijv. niet-ondersteunde styles)
-        if (htmlResult.messages && htmlResult.messages.length > 0) {
-          context.log('Mammoth waarschuwingen:', htmlResult.messages.length);
-        }
+        const result = await mammoth.extractRawText({ buffer });
+        tekst = result.value;
+        context.log('DOCX geparsed — tekst lengte:', tekst.length);
       }
 
-      // Normaliseer witregels in platte tekst
       tekst = tekst.replace(/\n{3,}/g, '\n\n').trim();
 
       if (tekst.length < 50) {
@@ -112,12 +85,8 @@ app.http('upload', {
       return {
         status: 200,
         headers: corsHeaders,
-        body: JSON.stringify({
-          tekst,
-          html,            // null bij PDF, gevuld HTML string bij DOCX
-          bestand_type: bestandType,
-          tekst_lengte: tekst.length
-        })
+        // Bestandsnaam NIET teruggeven — niet nodig en vermindert PII in responses
+        body: JSON.stringify({ tekst, tekst_lengte: tekst.length })
       };
 
     } catch (error) {
