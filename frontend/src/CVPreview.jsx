@@ -8,7 +8,7 @@ import {
   blokken2DocxParagraphs,
   parseHeader,
   stripMarkdown
-} from './cvUtils'
+} from './cvUtils.jsx'
 
 function CVPreview() {
   const location = useLocation()

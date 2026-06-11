@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
-import { tekst2Blokken, renderBlokken } from './cvUtils'
+import { tekst2Blokken, renderBlokken } from './cvUtils.jsx'
 
 const BACKEND = 'https://func-cv-optimizer-linux.azurewebsites.net/api'
 
