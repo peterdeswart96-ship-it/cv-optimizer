@@ -112,9 +112,9 @@ function CVPreview() {
         border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: '1a3a5c' } }
       }))
       for (const regel of tekst.split('\n')) {
-        // Lege regel: voeg lege paragraaf toe voor witruimte
         if (!regel.trim()) {
-          sectionChildren.push(new Paragraph({ spacing: { before: 40, after: 40 } }))
+          // Lege regel: voeg lege paragraaf toe voor witruimte in Word export
+          children.push(new Paragraph({ spacing: { before: 40, after: 40 } }))
           continue
         }
         const isBullet = regel.trim().startsWith('•')
