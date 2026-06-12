@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import html2pdf from 'html2pdf.js'
 import { Document, Packer, Paragraph, TextRun, AlignmentType, BorderStyle } from 'docx'
+import RichTextEditor from './RichTextEditor'
 import {
   maakBlokken,
   renderBlokken,
@@ -18,6 +19,7 @@ function CVPreview() {
   const [bewerkenIndex, setBewerkenIndex] = useState(null)
   const [bewerkTeksten, setBewerkTeksten] = useState({})
   const [bewerkWaarden, setBewerkWaarden] = useState({})
+  const [bewerkHtml, setBewerkHtml] = useState({})
 
   if (!secties) {
     return (
@@ -183,14 +185,14 @@ function CVPreview() {
             <p className="text-xs text-gray-400 mb-3">
               Gebruik enters voor nieuwe regels. Begin een regel met • voor een bullet punt.
             </p>
-            <textarea
-              value={bewerkWaarden[bewerkenIndex] ?? ''}
-              onChange={(e) => setBewerkWaarden(prev => ({ ...prev, [bewerkenIndex]: e.target.value }))}
-              className="w-full p-3 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-400"
-              style={{
-                minHeight: `${Math.max(120, ((bewerkWaarden[bewerkenIndex] ?? '').split('\n').length + 4) * 22)}px`
-              }}
-            />
+            <RichTextEditor
+                content={bewerkHtml[bewerkenIndex] || bewerkWaarden[bewerkenIndex] || ''}
+                onChange={(html, tekst) => {
+                  setBewerkHtml(prev => ({ ...prev, [bewerkenIndex]: html }))
+                  setBewerkWaarden(prev => ({ ...prev, [bewerkenIndex]: tekst }))
+                }}
+                minHeight={150}
+              />
             <div className="flex gap-3 mt-3">
               <button
                 onClick={() => slaOp(secties[bewerkenIndex].naam, bewerkenIndex)}
