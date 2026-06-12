@@ -242,11 +242,11 @@ export function blokken2Html(blokken) {
     if (blok.type === 'witregel') {
       html += '<p></p>'
     } else if (blok.type === 'bullet') {
-      html += <ul><li></li></ul>
+      html += '<ul><li>' + blok.tekst + '</li></ul>'
     } else if (blok.type === 'subkop') {
-      html += <h3></h3>
+      html += '<h3>' + blok.tekst + '</h3>'
     } else {
-      html += <p></p>
+      html += '<p>' + blok.tekst + '</p>'
     }
   }
   // Aaneengesloten ul's samenvoegen
