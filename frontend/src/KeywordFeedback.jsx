@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 function KeywordFeedback() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { analyse, cvTekst, vacatureTekst } = location.state || {}
+  const { analyse, cvTekst, cvHtml, vacatureTekst } = location.state || {}
 
   const [geselecteerdeKeywords, setGeselecteerdeKeywords] = useState([])
   const [keywordContext, setKeywordContext] = useState({})
@@ -64,6 +64,7 @@ function KeywordFeedback() {
       state: {
         analyse,
         cvTekst,
+        cvHtml,
         vacatureTekst,
         keywordContext: keywordContextSamenvatting,
         geselecteerdeKeywords,
@@ -204,7 +205,7 @@ function KeywordFeedback() {
         <div className="flex gap-4 justify-between">
           <button
             onClick={() => navigate('/sectie-review', {
-              state: { analyse, cvTekst, vacatureTekst, keywordContext: '', geselecteerdeKeywords: [], keywordSecties: {} }
+              state: { analyse, cvTekst, cvHtml, vacatureTekst, keywordContext: '', geselecteerdeKeywords: [], keywordSecties: {} }
             })}
             className="px-6 py-3 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors text-sm"
           >

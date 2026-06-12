@@ -568,6 +568,7 @@ function Analyse() {
         state: {
           analyse: minimaleAnalyse,
           cvTekst,
+          cvHtml,
           vacatureTekst: vacatureTekst || '',
           keywordContext: null,
           geselecteerdeKeywords: [],
