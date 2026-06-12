@@ -8,7 +8,8 @@ import {
   renderBlokken,
   blokken2DocxParagraphs,
   parseHeader,
-  stripMarkdown
+  stripMarkdown,
+  tekst2Html
 } from './cvUtils.jsx'
 
 function CVPreview() {
@@ -134,6 +135,7 @@ function CVPreview() {
   const startBewerken = (i, tekst) => {
     setBewerkenIndex(i)
     setBewerkWaarden(prev => ({ ...prev, [i]: tekst }))
+    setBewerkHtml(prev => ({ ...prev, [i]: tekst2Html(tekst) }))
   }
 
   const slaOp = (sectieNaam, i) => {

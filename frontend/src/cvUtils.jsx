@@ -231,6 +231,38 @@ export function html2Blokken(html) {
   return blokken
 }
 
+
+// ─── Blokken → HTML ─────────────────────────────────────────────────────────
+// Converteert blokken array naar HTML string voor gebruik in Tiptap editor
+
+export function blokken2Html(blokken) {
+  if (!blokken || blokken.length === 0) return ''
+  let html = ''
+  for (const blok of blokken) {
+    if (blok.type === 'witregel') {
+      html += '<p></p>'
+    } else if (blok.type === 'bullet') {
+      html += <ul><li></li></ul>
+    } else if (blok.type === 'subkop') {
+      html += <h3></h3>
+    } else {
+      html += <p></p>
+    }
+  }
+  // Aaneengesloten ul's samenvoegen
+  html = html.replace(/<\/ul><ul>/g, '')
+  return html
+}
+
+// ─── Plain tekst → HTML ──────────────────────────────────────────────────────
+// Converteert plain tekst naar HTML via tekst2Blokken + blokken2Html
+
+export function tekst2Html(tekst) {
+  if (!tekst) return ''
+  const blokken = tekst2Blokken(tekst)
+  return blokken2Html(blokken)
+}
+
 // ─── Universele blokken parser ───────────────────────────────────────────────
 // Kiest automatisch html2Blokken of tekst2Blokken op basis van beschikbare data
 
