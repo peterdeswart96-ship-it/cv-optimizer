@@ -8,6 +8,7 @@ import { BrandingProvider, useBranding } from './BrandingContext'
 import { AuthProvider, useAuth } from './AuthContext'
 import LoginScherm from './LoginScherm'
 import HoeWerktHet from './HoeWerktHet'
+import RichTextEditor from './RichTextEditor'
 import Security from './Security'
 
 const BACKEND = 'https://func-cv-optimizer-linux.azurewebsites.net/api'
@@ -655,19 +656,16 @@ function Analyse() {
                   </button>
                 </div>
               </div>
-              <textarea
-                className="w-full h-64 p-3 border rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                style={{
-                  backgroundColor: isDonker(branding.achtergrondkleur) ? '#1F2937' : '#FFFFFF',
-                  color: isDonker(branding.achtergrondkleur) ? '#F9FAFB' : '#111827',
-                  borderColor: isDonker(branding.achtergrondkleur) ? '#374151' : '#D1D5DB'
+              <RichTextEditor
+                content={cvHtml || cvTekst}
+                onChange={(html, tekst) => {
+                  setCvHtml(html)
+                  setCvTekst(tekst)
+                  if (tekst.length > 100 && !toonOpslaanKnop) toonOpslaanMelding()
                 }}
                 placeholder="Plak hier je CV tekst, of upload een PDF/DOCX..."
-                value={cvTekst}
-                onChange={(e) => {
-                  setCvTekst(e.target.value)
-                  if (e.target.value.length > 100 && !toonOpslaanKnop) toonOpslaanMelding()
-                }}
+                minHeight={256}
+                donkerThema={isDonker(branding.achtergrondkleur)}
               />
               <div className="flex items-center justify-between mt-1">
                 <p className="text-xs" style={{ color: cvTekst.length > MAX_CV_TEKENS ? '#F87171' : subTekstKleur }}>
