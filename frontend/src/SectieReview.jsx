@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 import { maakBlokken, renderBlokken } from './cvUtils.jsx'
+import RichTextEditor from './RichTextEditor'
 
 const BACKEND = 'https://func-cv-optimizer-linux.azurewebsites.net/api'
 
@@ -113,6 +114,7 @@ function SectieReview() {
   const [loading, setLoading] = useState(false)
   const [fout, setFout] = useState(null)
   const [aangepasteTekst, setAangepasteTekst] = useState('')
+  const [aangepastHtml, setAangepastHtml] = useState('')
   const [eigenInstructie, setEigenInstructie] = useState('')
   const [toonEigenInstructie, setToonEigenInstructie] = useState(false)
   const [toonBewerken, setToonBewerken] = useState(false)
@@ -232,6 +234,7 @@ function SectieReview() {
       setHuidigeSectieIndex(huidigeSectieIndex + 1)
       setSectieAnalyse(null)
       setAangepasteTekst('')
+      setAangepastHtml('')
       setToonEigenInstructie(false)
       setToonBewerken(false)
       setEigenInstructie('')
@@ -553,14 +556,14 @@ function SectieReview() {
                     <p className="text-xs text-gray-400 mb-2">
                       Pas de tekst aan. Gebruik enters voor nieuwe regels, begin een regel met • voor bullets.
                     </p>
-                    <textarea
-                      className="w-full p-3 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500"
-                      style={{
-                        minHeight: `${Math.max(120, (aangepasteTekst.split('\n').length + 4) * 22)}px`
-                      }}
-                      value={aangepasteTekst}
-                      onChange={(e) => setAangepasteTekst(e.target.value)}
-                    />
+                    <RichTextEditor
+                        content={aangepastHtml || aangepasteTekst}
+                        onChange={(html, tekst) => {
+                          setAangepastHtml(html)
+                          setAangepasteTekst(tekst)
+                        }}
+                        minHeight={150}
+                      />
                   </div>
                 )}
 
