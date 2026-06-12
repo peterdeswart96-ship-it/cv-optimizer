@@ -5,6 +5,27 @@ const { valideerToken } = require('../../auth');
 
 const MAX_BESTAND_BYTES = 10 * 1024 * 1024; // 10 MB maximum bestandsgrootte
 
+// ── HTML → plaintext conversie ───────────────────────────────────────────────
+// Converteert mammoth HTML-output naar leesbare platte tekst.
+// Bewaart structuur via newlines en bullet-tekens, strips daarna alle HTML-tags.
+function htmlNaarTekst(html) {
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')          // <br> → newline
+    .replace(/<\/p>/gi, '\n')               // einde alinea → newline
+    .replace(/<\/h[1-6]>/gi, '\n')          // einde heading → newline
+    .replace(/<\/li>/gi, '\n')              // einde lijstitem → newline
+    .replace(/<li>/gi, '• ')               // begin lijstitem → bullet
+    .replace(/<[^>]+>/g, '')               // strip overige HTML-tags
+    .replace(/&amp;/g, '&')               // HTML-entities decoderen
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code)))
+    .replace(/\n{3,}/g, '\n\n')           // max 2 opeenvolgende newlines
+    .trim();
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 app.http('upload', {
   methods: ['POST', 'OPTIONS'],
   authLevel: 'anonymous',
@@ -54,7 +75,7 @@ app.http('upload', {
         };
       }
 
-      // Bestandstype validatie — alleen op extensie én MIME type
+      // Bestandstype validatie
       const toegestaneTypes = ['.pdf', '.docx'];
       const isGeldigeExtensie = toegestaneTypes.some(ext => bestandsnaam.endsWith(ext));
       if (!isGeldigeExtensie) {
@@ -65,17 +86,33 @@ app.http('upload', {
       context.log('Bestand ontvangen — grootte:', buffer.length, 'bytes, type:', bestandsnaam.split('.').pop());
 
       let tekst = '';
+      let html = null;
+      let bestandType = '';
 
       if (bestandsnaam.endsWith('.pdf')) {
+        // PDF: alleen plaintext, geen HTML beschikbaar
         const data = await pdfParse(buffer);
         tekst = data.text;
-        context.log('PDF geparsed — paginas:', data.numpages);
+        bestandType = 'pdf';
+        context.log('PDF geparsed — paginas:', data.numpages, '— tekst:', tekst.length, 'tekens');
+
       } else if (bestandsnaam.endsWith('.docx')) {
-        const result = await mammoth.extractRawText({ buffer });
-        tekst = result.value;
-        context.log('DOCX geparsed — tekst lengte:', tekst.length);
+        // DOCX: één mammoth-aanroep (convertToHtml) → bewaar structuur
+        // Plaintext wordt afgeleid uit de HTML via htmlNaarTekst()
+        // Dit is bewust NIET Promise.all — dat crashte eerder de worker
+        const result = await mammoth.convertToHtml({ buffer });
+
+        html = result.value;
+        tekst = htmlNaarTekst(html);
+        bestandType = 'docx';
+
+        if (result.messages && result.messages.length > 0) {
+          context.log('Mammoth waarschuwingen:', result.messages.length);
+        }
+        context.log('DOCX geparsed — HTML:', html.length, 'tekens — tekst:', tekst.length, 'tekens');
       }
 
+      // Normaliseer witregels
       tekst = tekst.replace(/\n{3,}/g, '\n\n').trim();
 
       if (tekst.length < 50) {
@@ -85,12 +122,16 @@ app.http('upload', {
       return {
         status: 200,
         headers: corsHeaders,
-        // Bestandsnaam NIET teruggeven — niet nodig en vermindert PII in responses
-        body: JSON.stringify({ tekst, tekst_lengte: tekst.length })
+        body: JSON.stringify({
+          tekst,
+          html,                          // null voor PDF, HTML-string voor DOCX
+          bestand_type: bestandType,
+          tekst_lengte: tekst.length
+        })
       };
 
     } catch (error) {
-      context.log('Fout bij uploaden:', error.message);
+      context.log('Fout bij uploaden:', error.message, error.stack);
       return {
         status: 500,
         headers: corsHeaders,
