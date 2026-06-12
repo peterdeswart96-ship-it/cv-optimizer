@@ -101,6 +101,7 @@ function SectieReview() {
   const {
     analyse,
     cvTekst,
+    cvHtml,
     vacatureTekst,
     keywordContext,
     geselecteerdeKeywords,
