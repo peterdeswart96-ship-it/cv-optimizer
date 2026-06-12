@@ -747,14 +747,6 @@ function Analyse() {
             >
               {loading ? 'Analyseren...' : 'Vergelijk de CV met de vacature'}
             </button>
-            <button
-              onClick={directBewerken}
-              disabled={loading || !cvTekst || cvTekst.length > MAX_CV_TEKENS}
-              className="px-6 py-2 text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              style={{ backgroundColor: 'transparent', color: isDonker(branding.achtergrondkleur) ? '#9CA3AF' : '#6B7280', border: `1px solid ${isDonker(branding.achtergrondkleur) ? '#374151' : '#D1D5DB'}` }}
-            >
-              {loading ? 'Laden...' : 'Skip analyse en bewerk direct de CV'}
-            </button>
           </div>
         )}
 
