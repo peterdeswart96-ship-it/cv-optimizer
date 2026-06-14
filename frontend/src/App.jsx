@@ -632,8 +632,8 @@ function Analyse() {
           <div className="space-y-5">
             <button
               onClick={() => { setAnalyse(null); setVacatureTekst('') }}
-              className="text-sm hover:underline flex items-center gap-1"
-              style={{ color: branding.primaire_kleur }}
+              className="text-sm hover:underline flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors"
+              style={{ color: primaireTekstKleur, backgroundColor: `${branding.primaire_kleur}CC` }}
             >
               ← Nieuw CV analyseren
             </button>
@@ -684,7 +684,7 @@ function Analyse() {
               </div>
               <div className="rounded-xl p-4" style={{ backgroundColor: `${branding.primaire_kleur}15` }}>
                 <p className="text-xs font-medium uppercase mb-1" style={{ color: branding.primaire_kleur }}>Aanbeveling</p>
-                <p className="text-sm text-gray-800">{analyse.tone_aanbeveling}</p>
+                <p className="text-sm" style={{ color: labelKleur }}>{analyse.tone_aanbeveling}</p>
               </div>
             </div>
 
@@ -704,9 +704,9 @@ function Analyse() {
             </div>
 
             {/* CTA */}
-            <div className="rounded-2xl border p-6 text-center" style={{ backgroundColor: `${branding.primaire_kleur}10`, borderColor: `${branding.primaire_kleur}30` }}>
-              <h2 className="text-base font-semibold text-gray-800 mb-1">Klaar om je CV te verbeteren?</h2>
-              <p className="text-sm text-gray-500 mb-4">Ga sectie voor sectie door je CV met concrete verbeteringsvoorstellen.</p>
+            <div className="rounded-2xl border p-6 text-center" style={{ backgroundColor: `${branding.primaire_kleur}20`, borderColor: `${branding.primaire_kleur}50` }}>
+              <h2 className="text-base font-semibold mb-1" style={{ color: labelKleur }}>Klaar om je CV te verbeteren?</h2>
+              <p className="text-sm mb-4" style={{ color: subTekstKleur }}>Ga sectie voor sectie door je CV met concrete verbeteringsvoorstellen.</p>
               <button
                 onClick={() => navigate('/keyword-feedback', { state: { analyse, cvTekst, cvHtml, vacatureTekst } })}
                 className="px-8 py-3 font-medium rounded-xl transition-colors"
