@@ -10,7 +10,7 @@ function IcoCheck() {
 
 function Stap({ nummer, titel, beschrijving, placeholder }) {
   return (
-    <div className="flex gap-4 p-4 rounded-xl" style={{ backgroundColor: '#0F1A2E', border: '1px solid #1E3A5F' }}>
+    <div className="flex gap-4 p-4 rounded-xl" style={{ background: 'linear-gradient(135deg, #0F1A2E 0%, #1E3A5F 100%)', border: '1px solid #1E3A5F' }}>
       <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold"
         style={{ backgroundColor: '#1D4ED8', color: 'white' }}>
         {nummer}
@@ -35,30 +35,32 @@ export default function LoginScherm() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#080F1E' }}>
 
-      {/* ── Header — identiek aan Security pagina ── */}
-      <div className="px-6 py-4 flex items-center justify-between"
-        style={{ borderBottom: '1px solid #1E3A5F' }}>
+      {/* ── Blauwe topbalk — identiek aan Security pagina ── */}
+      <div className="px-6 py-3 flex items-center justify-between"
+        style={{ backgroundColor: '#1D4ED8' }}>
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: '#1D4ED8' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
               <polyline points="14 2 14 8 20 8"/>
             </svg>
           </div>
-          <span className="font-semibold text-sm" style={{ color: '#F1F5F9' }}>CV Optimizer</span>
+          <span className="font-semibold text-sm text-white">CV Optimizer</span>
         </div>
-        <button
-          onClick={() => { window.location.href = '/security' }}
-          className="flex items-center gap-1.5 text-sm transition-opacity hover:opacity-80"
-          style={{ color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer' }}
+        <a
+          href="/security"
+          className="flex items-center gap-1.5 text-xs text-white opacity-80 hover:opacity-100 transition-opacity"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
           </svg>
           Privacy & Beveiliging
-        </button>
+        </a>
       </div>
+
+      {/* ── Donkere subheader ── */}
+      <div className="px-6 py-3" style={{ backgroundColor: '#080F1E', borderBottom: '1px solid #1E3A5F' }} />
 
       {/* ── Inhoud — zelfde max-width en padding als Security pagina ── */}
       <div className="max-w-3xl mx-auto px-6 py-10">
@@ -121,13 +123,7 @@ export default function LoginScherm() {
           </a>
           <p className="text-xs text-center mt-3" style={{ color: '#334155' }}>
             Account wordt geactiveerd na goedkeuring van de beheerder ·{' '}
-            <button
-              onClick={() => { window.location.href = '/security' }}
-              className="hover:underline"
-              style={{ color: '#475569', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 'inherit' }}
-            >
-              Privacy & Beveiliging
-            </button>
+    <a href="/security" className="hover:underline" style={{ color: '#475569' }}>Privacy & Beveiliging</a>
           </p>
         </div>
 
@@ -152,13 +148,7 @@ export default function LoginScherm() {
       <div className="px-6 py-4 text-center text-xs"
         style={{ borderTop: '1px solid #1E3A5F', color: '#334155' }}>
         CV Optimizer · peter@pdscloud.nl ·{' '}
-        <button
-          onClick={() => { window.location.href = '/security' }}
-          className="hover:underline"
-          style={{ color: '#475569', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'inherit' }}
-        >
-          Privacy & Beveiliging
-        </button>
+  <a href="/security" className="hover:underline" style={{ color: '#475569' }}>Privacy & Beveiliging</a>
       </div>
 
     </div>
