@@ -53,13 +53,13 @@ function Header() {
       <button
             onClick={() => window.open('/hoe-werkt-het', '_blank')}
             title="Hoe werkt het?"
-            className="w-8 h-8 flex items-center justify-center text-base bg-white bg-opacity-20 text-white rounded-full hover:bg-opacity-30 transition-colors"
+            className="w-8 h-8 flex items-center justify-center text-base text-white rounded-lg transition-colors hover:opacity-80" style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}
           >
             ?
           </button>
           <button
             onClick={() => navigate('/security')}
-            className="px-3 py-1 text-sm bg-white bg-opacity-20 text-white rounded hover:bg-opacity-30 transition-colors flex items-center gap-1"
+            className="px-3 py-1.5 text-sm text-white rounded-lg transition-colors hover:opacity-80 flex items-center gap-1" style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}
             title="Privacy & Beveiliging"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -68,7 +68,7 @@ function Header() {
           {isAdmin && (
             <button
               onClick={() => navigate('/admin-branding')}
-              className="px-3 py-1 text-sm bg-white bg-opacity-20 text-white rounded hover:bg-opacity-30 transition-colors"
+              className="px-3 py-1.5 text-sm text-white rounded-lg transition-colors hover:opacity-80" style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}
             >
               🎨 Huisstijl
             </button>
@@ -78,7 +78,7 @@ function Header() {
           </span>
           <button
             onClick={uitloggen}
-            className="px-3 py-1 text-sm bg-white bg-opacity-20 text-white rounded hover:bg-opacity-30 transition-colors"
+            className="px-3 py-1.5 text-sm text-white rounded-lg transition-colors hover:opacity-80" style={{ backgroundColor: 'rgba(0,0,0,0.2)' }}
           >
             Uitloggen
           </button>
@@ -455,7 +455,6 @@ function Analyse() {
   const [toonFavorieten, setToonFavorieten] = useState(false)
   const [toonVacatureFavorieten, setToonVacatureFavorieten] = useState(false)
   const [toonVacatureInvoer, setToonVacatureInvoer] = useState(false)
-  const [actieveTooltip, setActieveTooltip] = useState(null)
   const fileInputRef = useRef(null)
   const navigate = useNavigate()
   const { branding } = useBranding()
@@ -721,148 +720,116 @@ function Analyse() {
         {/* ── Hoofdflow (geen analyse resultaat) ── */}
         {!analyse && (
           <>
-            {/* ── CV Editor met zwevende actieknoppen ── */}
-            <div className="relative">
-
-              {/* Zwevende knoppen LINKS (CV acties) */}
-              <div className="absolute -left-14 top-3 flex flex-col gap-2 z-10">
-
-                {/* Upload knop */}
-                <div className="relative group">
+            {/* ── Stap 1: CV invoer ── */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                    style={{ backgroundColor: branding.primaire_kleur }}>1</div>
+                  <h2 className="text-sm font-semibold text-gray-800">Jouw CV</h2>
+                </div>
+                <div className="flex gap-2">
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploadLoading}
-                    className="w-10 h-10 rounded-full shadow-md flex items-center justify-center transition-all hover:scale-110 disabled:opacity-50"
-                    style={{ backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB', color: '#4B5563' }}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 hover:opacity-80"
+                    style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
                   >
-                    {uploadLoading ? '⏳' : '📎'}
+                    {uploadLoading ? '⏳ Laden...' : '📎 Upload PDF/DOCX'}
                   </button>
-                  <div className="absolute left-12 top-1/2 -translate-y-1/2 bg-gray-800 text-white text-xs rounded-lg px-3 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-20">
-                    Upload PDF of Word bestand
-                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-800" />
-                  </div>
                   <input ref={fileInputRef} type="file" accept=".pdf,.docx" className="hidden"
                     onChange={(e) => e.target.files[0] && uploadCv(e.target.files[0])} />
-                </div>
-
-                {/* Opgeslagen CV's knop */}
-                <div className="relative group">
                   <button
                     onClick={() => setToonFavorieten(true)}
-                    className="w-10 h-10 rounded-full shadow-md flex items-center justify-center transition-all hover:scale-110"
-                    style={{ backgroundColor: '#FFFFFF', border: `1px solid ${branding.primaire_kleur}`, color: branding.primaire_kleur }}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors hover:opacity-80"
+                    style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
                   >
-                    ⭐
+                    ⭐ Opgeslagen CV's
                   </button>
-                  <div className="absolute left-12 top-1/2 -translate-y-1/2 bg-gray-800 text-white text-xs rounded-lg px-3 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-20">
-                    Kies een eerder opgeslagen CV
-                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-800" />
-                  </div>
                 </div>
-
-                {/* Opslaan als favoriet — verschijnt na invoer */}
-                {toonOpslaanKnop && cvTekst && (
-                  <div className="relative group">
-                    <button
-                      onClick={() => { setToonFavorieten(true); setToonOpslaanKnop(false) }}
-                      className={`w-10 h-10 rounded-full shadow-md flex items-center justify-center transition-all hover:scale-110 ${knipperend ? 'animate-pulse' : ''}`}
-                      style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
-                    >
-                      💾
-                    </button>
-                    <div className="absolute left-12 top-1/2 -translate-y-1/2 bg-gray-800 text-white text-xs rounded-lg px-3 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-20">
-                      CV opslaan als favoriet
-                      <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-800" />
-                    </div>
-                  </div>
-                )}
               </div>
 
-              {/* Zwevende knoppen RECHTS (acties) — verschijnen na CV invoer */}
-              {heeftCv && (
-                <div className="absolute -right-14 top-3 flex flex-col gap-2 z-10">
-
-                  {/* Direct bewerken */}
-                  <div className="relative group">
+              <div className="p-4">
+                <RichTextEditor
+                  content={cvHtml || cvTekst}
+                  onChange={(html, tekst) => {
+                    setCvHtml(html)
+                    setCvTekst(tekst)
+                    if (tekst.length > 100 && !toonOpslaanKnop) toonOpslaanMelding()
+                  }}
+                  placeholder="Plak hier je CV tekst, of upload een PDF/DOCX..."
+                  minHeight={300}
+                />
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-xs" style={{ color: cvTekst.length > MAX_CV_TEKENS ? '#F87171' : '#9CA3AF' }}>
+                    {cvTekst.length} / {MAX_CV_TEKENS} tekens
+                  </p>
+                  {toonOpslaanKnop && cvTekst && (
                     <button
-                      onClick={directBewerken}
-                      className="w-10 h-10 rounded-full shadow-md flex items-center justify-center transition-all hover:scale-110"
-                      style={{ backgroundColor: '#FFFFFF', border: '1px solid #E5E7EB', color: '#374151' }}
+                      onClick={() => { setToonFavorieten(true); setToonOpslaanKnop(false) }}
+                      className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all hover:opacity-80 ${knipperend ? 'animate-pulse' : ''}`}
+                      style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
                     >
-                      ✏️
+                      ⭐ Opslaan als favoriet
                     </button>
-                    <div className="absolute right-12 top-1/2 -translate-y-1/2 bg-gray-800 text-white text-xs rounded-lg px-3 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-20">
-                      Direct bewerken & downloaden als Word of PDF
-                      <div className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-gray-800" />
-                    </div>
-                  </div>
-
-                  {/* Analyseer met vacature */}
-                  <div className="relative group">
-                    <button
-                      onClick={() => setToonVacatureInvoer(prev => !prev)}
-                      className="w-10 h-10 rounded-full shadow-md flex items-center justify-center transition-all hover:scale-110"
-                      style={{
-                        backgroundColor: toonVacatureInvoer ? branding.primaire_kleur : '#FFFFFF',
-                        border: `1px solid ${branding.primaire_kleur}`,
-                        color: toonVacatureInvoer ? primaireTekstKleur : branding.primaire_kleur
-                      }}
-                    >
-                      🔍
-                    </button>
-                    <div className="absolute right-12 top-1/2 -translate-y-1/2 bg-gray-800 text-white text-xs rounded-lg px-3 py-1.5 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg z-20">
-                      CV analyseren en vergelijken met een vacature
-                      <div className="absolute left-full top-1/2 -translate-y-1/2 border-4 border-transparent border-l-gray-800" />
-                    </div>
-                  </div>
-
-                </div>
-              )}
-
-              {/* CV Editor kaart */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                    style={{ backgroundColor: branding.primaire_kleur }}>1</div>
-                  <h2 className="text-sm font-semibold text-gray-700">Jouw CV</h2>
-                  <span className="text-xs ml-auto" style={{ color: cvTekst.length > MAX_CV_TEKENS ? '#F87171' : '#9CA3AF' }}>
-                    {cvTekst.length} / {MAX_CV_TEKENS}
-                  </span>
-                </div>
-                <div className="p-4">
-                  <RichTextEditor
-                    content={cvHtml || cvTekst}
-                    onChange={(html, tekst) => {
-                      setCvHtml(html)
-                      setCvTekst(tekst)
-                      if (tekst.length > 100 && !toonOpslaanKnop) toonOpslaanMelding()
-                    }}
-                    placeholder="Plak hier je CV tekst, of upload een PDF/DOCX..."
-                    minHeight={400}
-                  />
+                  )}
                 </div>
               </div>
             </div>
 
+            {/* ── Stap 2: Kies actie (verschijnt na CV invoer) ── */}
+            {heeftCv && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                    style={{ backgroundColor: branding.primaire_kleur }}>2</div>
+                  <h2 className="text-sm font-semibold text-gray-800">Wat wil je doen?</h2>
+                </div>
+                <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+
+                  {/* Optie A: Direct bewerken */}
+                  <button
+                    onClick={directBewerken}
+                    className="flex flex-col items-start gap-2 p-4 rounded-xl text-left transition-all hover:opacity-90"
+                    style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
+                  >
+                    <span className="text-lg">✏️</span>
+                    <span className="text-sm font-semibold">Direct bewerken & downloaden</span>
+                    <span className="text-xs opacity-80">CV opmaken en exporteren als Word of PDF, zonder analyse</span>
+                  </button>
+
+                  {/* Optie B: Analyseer */}
+                  <button
+                    onClick={() => setToonVacatureInvoer(prev => !prev)}
+                    className="flex flex-col items-start gap-2 p-4 rounded-xl text-left transition-all hover:opacity-90"
+                    style={{
+                      backgroundColor: toonVacatureInvoer ? `${branding.primaire_kleur}CC` : branding.primaire_kleur,
+                      color: primaireTekstKleur
+                    }}
+                  >
+                    <span className="text-lg">🔍</span>
+                    <span className="text-sm font-semibold">Analyseer met vacature</span>
+                    <span className="text-xs opacity-80">Match score, ontbrekende keywords en sectie-voor-sectie verbetering</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* ── Stap 3: Vacature invoer (klapt uit na keuze analyseer) ── */}
             {heeftCv && toonVacatureInvoer && (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                      style={{ backgroundColor: branding.primaire_kleur }}>2</div>
-                    <h2 className="text-sm font-semibold text-gray-700">Vacature</h2>
-                    <span className="text-xs" style={{ color: vacatureTekst.length > MAX_VACATURE_TEKENS ? '#F87171' : '#9CA3AF' }}>
-                      {vacatureTekst.length} / {MAX_VACATURE_TEKENS}
-                    </span>
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                      style={{ backgroundColor: branding.primaire_kleur }}>3</div>
+                    <h2 className="text-sm font-semibold text-gray-800">Vacature</h2>
                   </div>
                   <button
                     onClick={() => setToonVacatureFavorieten(true)}
-                    className="w-8 h-8 rounded-full shadow-sm flex items-center justify-center transition-all hover:scale-110"
-                    style={{ backgroundColor: '#FFFFFF', border: `1px solid ${branding.primaire_kleur}`, color: branding.primaire_kleur, fontSize: '14px' }}
-                    title="Opgeslagen vacatures"
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors hover:opacity-80"
+                    style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
                   >
-                    ⭐
+                    ⭐ Opgeslagen vacatures
                   </button>
                 </div>
 
@@ -877,16 +844,20 @@ function Analyse() {
                       if (e.target.value.length > 100 && !toonVacatureOpslaanKnop) toonVacatureOpslaanMelding()
                     }}
                   />
-
-                  {toonVacatureOpslaanKnop && vacatureTekst && (
-                    <button
-                      onClick={() => { setToonVacatureFavorieten(true); setToonVacatureOpslaanKnop(false) }}
-                      className={`mt-2 text-xs px-3 py-1 rounded-full font-medium transition-all ${vacatureKnipperend ? 'animate-pulse' : ''}`}
-                      style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
-                    >
-                      ⭐ Opslaan als favoriet
-                    </button>
-                  )}
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-xs" style={{ color: vacatureTekst.length > MAX_VACATURE_TEKENS ? '#F87171' : '#9CA3AF' }}>
+                      {vacatureTekst.length} / {MAX_VACATURE_TEKENS} tekens
+                    </p>
+                    {toonVacatureOpslaanKnop && vacatureTekst && (
+                      <button
+                        onClick={() => { setToonVacatureFavorieten(true); setToonVacatureOpslaanKnop(false) }}
+                        className={`text-xs px-3 py-1 rounded-lg font-medium transition-all whitespace-nowrap ${vacatureKnipperend ? 'animate-pulse' : ''}`}
+                        style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
+                      >
+                        ⭐ Opslaan als favoriet
+                      </button>
+                    )}
+                  </div>
 
                   {fout && (
                     <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl">
@@ -898,7 +869,7 @@ function Analyse() {
                     <button
                       onClick={analyseer}
                       disabled={loading || !vacatureTekst || vacatureTekst.length > MAX_VACATURE_TEKENS || cvTekst.length > MAX_CV_TEKENS}
-                      className="px-6 py-2.5 font-medium rounded-full text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-105 flex items-center gap-2 shadow-sm"
+                      className="px-6 py-2.5 font-medium rounded-xl text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                       style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
                     >
                       {loading ? (
@@ -913,6 +884,7 @@ function Analyse() {
               </div>
             )}
 
+            {/* Fout buiten vacature blok */}
             {fout && !toonVacatureInvoer && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
                 <p className="text-red-700 text-sm">{fout}</p>
