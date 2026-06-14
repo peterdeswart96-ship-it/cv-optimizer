@@ -817,18 +817,12 @@ function Analyse() {
                     Voer eerst je CV in
                   </p>
                 )}
+              </div>
             </div>
 
             {/* ── Vacature invoer (klapt uit na keuze analyseer) ── */}
             {heeftCv && toonVacatureInvoer && (
-              <div className="flex items-start gap-4">
-                {/* Spacer links — zelfde breedte als linkerknoppen */}
-                <div className="w-32 flex-shrink-0" />
-
-                {/* Vacature kaart */}
-
-                {/* Vacature kaart — zelfde breedte als CV editor */}
-                <div ref={vacatureRef} className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-w-0">
+              <div ref={vacatureRef} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
@@ -892,9 +886,6 @@ function Analyse() {
                     </button>
                   </div>
                 </div>
-                </div>
-
-                {/* Lege spacer rechts — zelfde breedte als rechterknoppen */}
               </div>
             )}
 
