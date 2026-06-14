@@ -1,15 +1,15 @@
 # CV Optimizer — Project Status
 
-> Gegenereerd op: 14-06-2026 13:31
+> Gegenereerd op: 14-06-2026 13:37
 > Repo: https://github.com/peterdeswart96-ship-it/cv-optimizer
 ## Over dit project
 
 SaaS web app die CV's analyseert en verbetert met Claude AI
 ## Deployment Status
 
+- ✅ **main** — docs: PROJECT_STATUS.md toegevoegd via Update-ProjectStatus script (14-06-2026 11:34)
 - ✅ **main** — feat: KeywordFeedback redesign - branding kleuren, nieuwe teksten, beΓÇª (14-06-2026 11:04)
 - ✅ **main** — fix: aanbeveling blok groen en opvallend gemaakt (14-06-2026 10:49)
-- ✅ **main** — fix: knoppen top-24, disabled staat voor bewerken/analyseer knoppen (14-06-2026 10:18)
 
 ## Open Issues
 
@@ -34,11 +34,11 @@ SaaS web app die CV's analyseert en verbetert met Claude AI
 
 ## Recente Commits
 
+- `deca414` docs: PROJECT_STATUS.md toegevoegd via Update-ProjectStatus script (14-06-2026 11:32)
 - `c97f5ad` feat: KeywordFeedback redesign - branding kleuren, nieuwe teksten, betere knoppen (14-06-2026 11:03)
 - `1eef021` fix: aanbeveling blok groen en opvallend gemaakt (14-06-2026 10:47)
 - `2afd147` fix: knoppen top-24, disabled staat voor bewerken/analyseer knoppen (14-06-2026 10:17)
 - `efa3359` fix: JSX syntax fouten in vacature sectie opgelost (14-06-2026 10:10)
-- `a4e70e8` fix: zijknoppen fixed positie aan schermranden, editor gebruikt volle breedte (14-06-2026 10:06)
 
 ## Claude Project Sync
 
