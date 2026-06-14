@@ -625,7 +625,7 @@ function Analyse() {
         />
       )}
 
-      <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
+      <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
 
         {/* ── Analyse resultaat ── */}
         {analyse && (
@@ -721,11 +721,11 @@ function Analyse() {
         {/* ── Hoofdflow (geen analyse resultaat) ── */}
         {!analyse && (
           <>
-            {/* ── CV invoer met zwevende zijknoppen ── */}
-            <div className="relative flex items-start gap-4">
+            {/* ── CV invoer met fixed zijknoppen ── */}
+            <div className="relative">
 
-              {/* Linkerknoppen — in de zwarte ruimte links */}
-              <div className="flex flex-col gap-2 pt-4 w-32 flex-shrink-0">
+              {/* Linkerknoppen — fixed links in het scherm */}
+              <div className="fixed left-4 top-1/3 flex flex-col gap-2 z-20">
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadLoading}
@@ -760,7 +760,7 @@ function Analyse() {
               </div>
 
               {/* CV Editor kaart */}
-              <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-w-0">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-3">
                   <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
                     style={{ backgroundColor: branding.primaire_kleur }}>1</div>
@@ -783,8 +783,8 @@ function Analyse() {
                 </div>
               </div>
 
-              {/* Rechterknoppen — in de zwarte ruimte rechts */}
-              <div className="flex flex-col gap-2 pt-4 w-32 flex-shrink-0">
+              {/* Rechterknoppen — fixed rechts in het scherm */}
+              <div className="fixed right-4 top-1/3 flex flex-col gap-2 z-20">
                 {heeftCv ? (
                   <>
                     <button
@@ -817,7 +817,6 @@ function Analyse() {
                     Voer eerst je CV in
                   </p>
                 )}
-              </div>
             </div>
 
             {/* ── Vacature invoer (klapt uit na keuze analyseer) ── */}
@@ -896,7 +895,6 @@ function Analyse() {
                 </div>
 
                 {/* Lege spacer rechts — zelfde breedte als rechterknoppen */}
-                <div className="w-32 flex-shrink-0" />
               </div>
             )}
 
