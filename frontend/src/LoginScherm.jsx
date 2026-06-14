@@ -50,6 +50,8 @@ export default function LoginScherm() {
         </div>
         <a
           href="/security"
+          target="_blank"
+          rel="noopener noreferrer"
           className="flex items-center gap-1.5 text-xs text-white opacity-80 hover:opacity-100 transition-opacity"
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -123,7 +125,7 @@ export default function LoginScherm() {
           </a>
           <p className="text-xs text-center mt-3" style={{ color: '#334155' }}>
             Account wordt geactiveerd na goedkeuring van de beheerder ·{' '}
-    <a href="/security" className="hover:underline" style={{ color: '#475569' }}>Privacy & Beveiliging</a>
+    <a href="/security" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#475569' }}>Privacy & Beveiliging</a>
           </p>
         </div>
 
@@ -148,7 +150,7 @@ export default function LoginScherm() {
       <div className="px-6 py-4 text-center text-xs"
         style={{ borderTop: '1px solid #1E3A5F', color: '#334155' }}>
         CV Optimizer · peter@pdscloud.nl ·{' '}
-  <a href="/security" className="hover:underline" style={{ color: '#475569' }}>Privacy & Beveiliging</a>
+  <a href="/security" target="_blank" rel="noopener noreferrer" className="hover:underline" style={{ color: '#475569' }}>Privacy & Beveiliging</a>
       </div>
 
     </div>
