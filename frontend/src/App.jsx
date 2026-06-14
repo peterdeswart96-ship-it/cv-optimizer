@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import SectieReview from './SectieReview'
 import CVPreview from './CVPreview'
@@ -535,7 +535,7 @@ function Analyse() {
     }
   }
 
-  directBewerken = () => {
+  const directBewerken = () => {
     if (!cvTekst) {
       setFout('Voer eerst je CV in.')
       return
@@ -912,3 +912,4 @@ function App() {
 }
 
 export default App
+
