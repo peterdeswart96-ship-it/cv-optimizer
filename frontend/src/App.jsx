@@ -456,6 +456,7 @@ function Analyse() {
   const [toonVacatureFavorieten, setToonVacatureFavorieten] = useState(false)
   const [toonVacatureInvoer, setToonVacatureInvoer] = useState(false)
   const fileInputRef = useRef(null)
+  const vacatureRef = useRef(null)
   const navigate = useNavigate()
   const { branding } = useBranding()
   const { getToken } = useAuth()
@@ -795,7 +796,12 @@ function Analyse() {
                       ✏️ Bewerken
                     </button>
                     <button
-                      onClick={() => setToonVacatureInvoer(prev => !prev)}
+                      onClick={() => {
+                        setToonVacatureInvoer(prev => !prev)
+                        setTimeout(() => {
+                          vacatureRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                        }, 50)
+                      }}
                       className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition-all hover:opacity-90 w-full"
                       style={{
                         backgroundColor: toonVacatureInvoer ? `${branding.primaire_kleur}AA` : branding.primaire_kleur,
@@ -823,7 +829,7 @@ function Analyse() {
                 {/* Vacature kaart */}
 
                 {/* Vacature kaart — zelfde breedte als CV editor */}
-                <div className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-w-0">
+                <div ref={vacatureRef} className="flex-1 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden min-w-0">
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
