@@ -1,21 +1,41 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useBranding } from './BrandingContext'
+
+function isDonker(hex) {
+  if (!hex || !hex.startsWith('#') || hex.length < 7) return false
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return (r * 299 + g * 587 + b * 114) / 1000 < 150
+}
 
 function KeywordFeedback() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { branding } = useBranding()
   const { analyse, cvTekst, cvHtml, vacatureTekst } = location.state || {}
 
   const [geselecteerdeKeywords, setGeselecteerdeKeywords] = useState([])
   const [keywordContext, setKeywordContext] = useState({})
   const [keywordSecties, setKeywordSecties] = useState({})
 
+  const primaireTekstKleur = isDonker(branding.primaire_kleur) ? '#FFFFFF' : '#111827'
+  const achtergrondKleur = branding.achtergrondkleur || '#080F1E'
+  const isAchtergrondDonker = isDonker(achtergrondKleur)
+
   if (!analyse) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: achtergrondKleur }}>
         <div className="text-center">
-          <p className="text-gray-600 mb-4">Geen analyse gevonden. Doe eerst een analyse.</p>
-          <button onClick={() => navigate('/')} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          <p className="mb-4" style={{ color: isAchtergrondDonker ? '#9CA3AF' : '#6B7280' }}>
+            Geen analyse gevonden. Doe eerst een analyse.
+          </p>
+          <button
+            onClick={() => navigate('/')}
+            className="px-6 py-2 rounded-lg font-medium"
+            style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
+          >
             ← Terug naar analyse
           </button>
         </div>
@@ -27,9 +47,7 @@ function KeywordFeedback() {
 
   const toggleKeyword = (keyword) => {
     setGeselecteerdeKeywords(prev =>
-      prev.includes(keyword)
-        ? prev.filter(k => k !== keyword)
-        : [...prev, keyword]
+      prev.includes(keyword) ? prev.filter(k => k !== keyword) : [...prev, keyword]
     )
   }
 
@@ -39,189 +57,230 @@ function KeywordFeedback() {
 
   const toggleSectieVoorKeyword = (keyword, sectieNaam) => {
     setKeywordSecties(prev => {
-      const huidigeSectiesVoorKeyword = prev[keyword] || []
-      const nieuweSecties = huidigeSectiesVoorKeyword.includes(sectieNaam)
-        ? huidigeSectiesVoorKeyword.filter(s => s !== sectieNaam)
-        : [...huidigeSectiesVoorKeyword, sectieNaam]
-      return { ...prev, [keyword]: nieuweSecties }
+      const huidig = prev[keyword] || []
+      return {
+        ...prev,
+        [keyword]: huidig.includes(sectieNaam)
+          ? huidig.filter(s => s !== sectieNaam)
+          : [...huidig, sectieNaam]
+      }
     })
   }
 
   const gaVerder = () => {
-    // Bouw keyword context samen inclusief sectie-instructies
     const keywordContextSamenvatting = geselecteerdeKeywords
       .filter(k => keywordContext[k])
       .map(k => {
         const secties = keywordSecties[k] || []
         const sectieInstructie = secties.length > 0
-          ? ` Voeg dit ALLEEN toe aan de volgende secties: ${secties.join(', ')}. Voeg het NIET toe aan andere secties.`
+          ? ` Voeg dit ALLEEN toe aan: ${secties.join(', ')}.`
           : ''
         return `${k}: ${keywordContext[k]}${sectieInstructie}`
       })
       .join('\n')
 
     navigate('/sectie-review', {
-      state: {
-        analyse,
-        cvTekst,
-        cvHtml,
-        vacatureTekst,
-        keywordContext: keywordContextSamenvatting,
-        geselecteerdeKeywords,
-        keywordSecties
-      }
+      state: { analyse, cvTekst, cvHtml, vacatureTekst, keywordContext: keywordContextSamenvatting, geselecteerdeKeywords, keywordSecties }
     })
   }
 
+  const kanVerder = geselecteerdeKeywords.length === 0 ||
+    geselecteerdeKeywords.every(k => keywordContext[k]?.trim())
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
+    <div className="min-h-screen" style={{ backgroundColor: achtergrondKleur }}>
+
+      {/* Header — zelfde stijl als hoofdscherm */}
+      <div style={{ backgroundColor: branding.primaire_kleur }}>
+        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">CV Optimizer</h1>
-            <p className="text-sm text-gray-500 mt-1">Stap 1 van 2 — Keywords controleren</p>
+            <h1 className="text-base font-bold" style={{ color: primaireTekstKleur }}>
+              Keywords controleren
+            </h1>
+            <p className="text-xs mt-0.5" style={{ color: `${primaireTekstKleur}99` }}>
+              Stap 1 van 2
+            </p>
           </div>
-          <button onClick={() => navigate('/')} className="text-sm text-blue-600 hover:underline">
+          <button
+            onClick={() => navigate(-1)}
+            className="text-xs hover:underline"
+            style={{ color: `${primaireTekstKleur}CC` }}
+          >
             ← Terug naar analyse
           </button>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
+      {/* Inhoud */}
+      <div className="max-w-3xl mx-auto px-6 py-8 space-y-5">
 
-        {/* Uitleg */}
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-blue-900 mb-2">
-            Heb je ervaring met deze ontbrekende keywords?
+        {/* Uitleg blok */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <h2 className="text-base font-semibold text-gray-900 mb-3">
+            Welke ontbrekende keywords kun jij toevoegen?
           </h2>
-          <p className="text-sm text-blue-800">
-            Vink aan welke keywords je wél hebt, vertel Claude er meer over, en kies in welke secties je ze wilt toevoegen.
-            Claude gebruikt deze informatie om gerichte suggesties te geven — alleen in de secties die jij aanwijst.
-          </p>
+          <div className="text-sm text-gray-600 space-y-2 leading-relaxed">
+            <p>
+              Deze keywords worden gevraagd in de vacature maar worden (nog) niet genoemd in jouw CV.
+              <strong className="text-gray-800"> Vink de keywords aan waarvan je denkt dat we ze alsnog kunnen noemen.</strong>
+            </p>
+            <p>
+              Daarna gaan we kijken in welke sectie(s) we ze het beste kunnen plaatsen,
+              en kun je wat extra toelichting geven over jouw ervaring ermee.
+            </p>
+            <p className="flex items-start gap-2 pt-1 text-xs text-gray-500">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-0.5">
+                <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+              </svg>
+              Claude AI geeft daarna concrete voorbeelden voor mogelijke verbetering per sectie.
+            </p>
+          </div>
         </div>
 
-        {/* Ontbrekende keywords */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-base font-semibold text-gray-800 mb-4">Ontbrekende keywords</h3>
-          <div className="space-y-4">
-            {analyse.ontbrekende_keywords.map((keyword, i) => (
-              <div key={i} className={`border rounded-lg p-4 transition-colors ${geselecteerdeKeywords.includes(keyword) ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}>
+        {/* Keywords */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <h3 className="text-sm font-semibold text-gray-700 mb-4 uppercase tracking-wide">
+            Ontbrekende keywords
+          </h3>
+          <div className="space-y-3">
+            {analyse.ontbrekende_keywords.map((keyword, i) => {
+              const geselecteerd = geselecteerdeKeywords.includes(keyword)
+              return (
+                <div key={i} className={`rounded-xl border transition-all ${
+                  geselecteerd ? 'border-green-300 bg-green-50' : 'border-gray-200 bg-white'
+                }`}>
+                  {/* Keyword rij */}
+                  <div
+                    className="flex items-center gap-3 p-4 cursor-pointer"
+                    onClick={() => toggleKeyword(keyword)}
+                  >
+                    <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 border-2 transition-colors ${
+                      geselecteerd ? 'bg-green-500 border-green-500' : 'border-gray-300'
+                    }`}>
+                      {geselecteerd && (
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                      )}
+                    </div>
+                    <span className={`text-sm font-medium ${geselecteerd ? 'text-green-800' : 'text-gray-800'}`}>
+                      {keyword}
+                    </span>
+                    {geselecteerd && (
+                      <span className="ml-auto text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
+                        Geselecteerd
+                      </span>
+                    )}
+                  </div>
 
-                {/* Keyword checkbox */}
-                <div className="flex items-center gap-3 mb-2">
-                  <input
-                    type="checkbox"
-                    id={`keyword-${i}`}
-                    checked={geselecteerdeKeywords.includes(keyword)}
-                    onChange={() => toggleKeyword(keyword)}
-                    className="w-4 h-4 text-green-600 rounded"
-                  />
-                  <label htmlFor={`keyword-${i}`} className="text-sm font-medium text-gray-800 cursor-pointer">
-                    {keyword}
-                  </label>
-                  {geselecteerdeKeywords.includes(keyword) && (
-                    <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">Geselecteerd</span>
+                  {/* Uitklap bij selectie */}
+                  {geselecteerd && (
+                    <div className="px-4 pb-4 ml-8 space-y-4 border-t border-green-200 pt-4">
+
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 block mb-1.5">
+                          Vertel Claude meer over jouw ervaring
+                        </label>
+                        <textarea
+                          className="w-full h-20 p-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-400 bg-white resize-none"
+                          placeholder={`Bijv. bij welk bedrijf, hoe lang, welk niveau...`}
+                          value={keywordContext[keyword] || ''}
+                          onChange={(e) => updateContext(keyword, e.target.value)}
+                        />
+                        {!keywordContext[keyword]?.trim() && (
+                          <p className="text-xs text-amber-600 mt-1">
+                            ⚠️ Vereist om door te gaan
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 block mb-2">
+                          In welke sectie(s) wil je dit toevoegen?
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {sectieNamen.map((sectieNaam, j) => {
+                            const isGeselecteerd = (keywordSecties[keyword] || []).includes(sectieNaam)
+                            return (
+                              <button
+                                key={j}
+                                onClick={() => toggleSectieVoorKeyword(keyword, sectieNaam)}
+                                className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+                                  isGeselecteerd
+                                    ? 'text-white border-transparent'
+                                    : 'bg-white text-gray-600 border-gray-300 hover:border-green-400'
+                                }`}
+                                style={isGeselecteerd ? { backgroundColor: branding.primaire_kleur } : {}}
+                              >
+                                {sectieNaam}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        <p className={`text-xs mt-1.5 ${
+                          (keywordSecties[keyword] || []).length > 0 ? 'text-green-600' : 'text-gray-400'
+                        }`}>
+                          {(keywordSecties[keyword] || []).length > 0
+                            ? `✓ Wordt toegevoegd aan: ${(keywordSecties[keyword] || []).join(', ')}`
+                            : 'Geen sectie gekozen — Claude kiest zelf de beste plek'
+                          }
+                        </p>
+                      </div>
+                    </div>
                   )}
                 </div>
-
-                {/* Context + sectie selectie verschijnt als keyword geselecteerd is */}
-                {geselecteerdeKeywords.includes(keyword) && (
-                  <div className="mt-3 ml-7 space-y-4">
-
-                    {/* Context tekstveld */}
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 block mb-1">
-                        Vertel Claude meer over jouw ervaring
-                      </label>
-                      <textarea
-                        className="w-full h-20 p-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-                        placeholder={`Bijv. waar, wanneer, hoe lang je ${keyword} hebt gebruikt...`}
-                        value={keywordContext[keyword] || ''}
-                        onChange={(e) => updateContext(keyword, e.target.value)}
-                      />
-                    </div>
-
-                    {/* Sectie selectie */}
-                    <div>
-                      <label className="text-xs font-medium text-gray-600 block mb-2">
-                        In welke secties wil je dit keyword toevoegen?
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {sectieNamen.map((sectieNaam, j) => {
-                          const isGeselecteerd = (keywordSecties[keyword] || []).includes(sectieNaam)
-                          return (
-                            <button
-                              key={j}
-                              onClick={() => toggleSectieVoorKeyword(keyword, sectieNaam)}
-                              className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
-                                isGeselecteerd
-                                  ? 'bg-blue-600 text-white border-blue-600'
-                                  : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
-                              }`}
-                            >
-                              {sectieNaam}
-                            </button>
-                          )
-                        })}
-                      </div>
-                      {(keywordSecties[keyword] || []).length === 0 && (
-                        <p className="text-xs text-amber-600 mt-1">
-                          ⚠️ Geen sectie geselecteerd — Claude voegt dit keyword toe waar hij het relevant vindt
-                        </p>
-                      )}
-                      {(keywordSecties[keyword] || []).length > 0 && (
-                        <p className="text-xs text-green-600 mt-1">
-                          ✓ Wordt alleen toegevoegd aan: {(keywordSecties[keyword] || []).join(', ')}
-                        </p>
-                      )}
-                    </div>
-
-                  </div>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
 
         {/* Samenvatting */}
         {geselecteerdeKeywords.length > 0 && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-            <p className="text-sm font-medium text-green-800 mb-1">
+          <div className="bg-white rounded-2xl border border-green-200 shadow-sm p-4">
+            <p className="text-sm font-semibold text-green-800 mb-2">
               ✓ {geselecteerdeKeywords.length} keyword{geselecteerdeKeywords.length > 1 ? 's' : ''} geselecteerd
             </p>
-            {geselecteerdeKeywords.map(k => (
-              <p key={k} className="text-xs text-green-700">
-                <span className="font-medium">{k}</span>
-                {(keywordSecties[k] || []).length > 0
-                  ? ` → ${(keywordSecties[k] || []).join(', ')}`
-                  : ' → alle relevante secties'
-                }
-              </p>
-            ))}
+            <div className="space-y-1">
+              {geselecteerdeKeywords.map(k => (
+                <p key={k} className="text-xs text-green-700">
+                  <span className="font-medium">{k}</span>
+                  {(keywordSecties[k] || []).length > 0
+                    ? ` → ${(keywordSecties[k] || []).join(', ')}`
+                    : ' → Claude kiest de beste sectie'
+                  }
+                </p>
+              ))}
+            </div>
           </div>
         )}
 
         {/* Knoppen */}
-        <div className="flex gap-4 justify-between">
+        <div className="flex gap-3 justify-between pt-2">
           <button
             onClick={() => navigate('/sectie-review', {
               state: { analyse, cvTekst, cvHtml, vacatureTekst, keywordContext: '', geselecteerdeKeywords: [], keywordSecties: {} }
             })}
-            className="px-6 py-3 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+            className="px-5 py-2.5 rounded-xl text-sm border transition-colors hover:opacity-80"
+            style={{ borderColor: `${primaireTekstKleur}30`, color: isAchtergrondDonker ? '#9CA3AF' : '#6B7280', backgroundColor: 'transparent' }}
           >
-            Overslaan — direct naar sectie review
+            Overslaan
           </button>
+
           <button
             onClick={gaVerder}
-            disabled={geselecteerdeKeywords.length > 0 && geselecteerdeKeywords.some(k => !keywordContext[k])}
-            className="px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            disabled={!kanVerder}
+            className="px-8 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:opacity-90"
+            style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
           >
-            Doorgaan naar sectie review →
+            {geselecteerdeKeywords.length > 0
+              ? `${geselecteerdeKeywords.length} keyword${geselecteerdeKeywords.length > 1 ? 's' : ''} toevoegen & doorgaan →`
+              : 'Doorgaan zonder keywords →'
+            }
           </button>
         </div>
 
-        {geselecteerdeKeywords.length > 0 && geselecteerdeKeywords.some(k => !keywordContext[k]) && (
-          <p className="text-xs text-center text-amber-600">
+        {!kanVerder && (
+          <p className="text-xs text-center text-amber-500">
             Vul voor elk geselecteerd keyword een toelichting in om door te gaan
           </p>
         )}
