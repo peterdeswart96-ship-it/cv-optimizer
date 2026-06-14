@@ -1,5 +1,4 @@
 import { useAuth } from './AuthContext'
-import { useNavigate } from 'react-router-dom'
 
 function IcoCheck() {
   return (
@@ -32,7 +31,6 @@ function Stap({ nummer, titel, beschrijving, placeholder }) {
 
 export default function LoginScherm() {
   const { inloggen } = useAuth()
-  const navigate = useNavigate()
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#080F1E' }}>
@@ -51,7 +49,7 @@ export default function LoginScherm() {
           <span className="font-semibold text-sm" style={{ color: '#F1F5F9' }}>CV Optimizer</span>
         </div>
         <button
-          onClick={() => navigate('/security')}
+          onClick={() => { window.location.href = '/security' }}
           className="flex items-center gap-1.5 text-sm transition-opacity hover:opacity-80"
           style={{ color: '#94A3B8', background: 'none', border: 'none', cursor: 'pointer' }}
         >
@@ -124,7 +122,7 @@ export default function LoginScherm() {
           <p className="text-xs text-center mt-3" style={{ color: '#334155' }}>
             Account wordt geactiveerd na goedkeuring van de beheerder ·{' '}
             <button
-              onClick={() => navigate('/security')}
+              onClick={() => { window.location.href = '/security' }}
               className="hover:underline"
               style={{ color: '#475569', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 'inherit' }}
             >
@@ -155,7 +153,7 @@ export default function LoginScherm() {
         style={{ borderTop: '1px solid #1E3A5F', color: '#334155' }}>
         CV Optimizer · peter@pdscloud.nl ·{' '}
         <button
-          onClick={() => navigate('/security')}
+          onClick={() => { window.location.href = '/security' }}
           className="hover:underline"
           style={{ color: '#475569', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'inherit' }}
         >
