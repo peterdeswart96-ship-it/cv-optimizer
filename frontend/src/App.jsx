@@ -682,9 +682,14 @@ function Analyse() {
                   <p className="text-sm text-gray-700">{analyse.tone_of_voice_cv}</p>
                 </div>
               </div>
-              <div className="rounded-xl p-4" style={{ backgroundColor: `${branding.primaire_kleur}15` }}>
-                <p className="text-xs font-medium uppercase mb-1" style={{ color: branding.primaire_kleur }}>Aanbeveling</p>
-                <p className="text-sm" style={{ color: labelKleur }}>{analyse.tone_aanbeveling}</p>
+              <div className="rounded-xl p-4 mt-2" style={{ backgroundColor: '#064E3B', border: '1px solid #065F46' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#34D399' }}>Aanbeveling</p>
+                </div>
+                <p className="text-sm leading-relaxed" style={{ color: '#D1FAE5' }}>{analyse.tone_aanbeveling}</p>
               </div>
             </div>
 
