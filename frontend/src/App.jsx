@@ -725,7 +725,7 @@ function Analyse() {
             <div className="relative">
 
               {/* Linkerknoppen — fixed links in het scherm */}
-              <div className="fixed left-4 top-1/3 flex flex-col gap-2 z-20">
+              <div className="fixed left-4 top-24 flex flex-col gap-2 z-20">
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadLoading}
@@ -784,7 +784,7 @@ function Analyse() {
               </div>
 
               {/* Rechterknoppen — fixed rechts in het scherm */}
-              <div className="fixed right-4 top-1/3 flex flex-col gap-2 z-20">
+              <div className="fixed right-4 top-24 flex flex-col gap-2 z-20">
                 {heeftCv ? (
                   <>
                     <button
@@ -813,9 +813,19 @@ function Analyse() {
                     </button>
                   </>
                 ) : (
-                  <p className="text-xs text-center leading-relaxed pt-2" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                    Voer eerst je CV in
-                  </p>
+                  <div className="flex flex-col gap-1.5">
+                    <button disabled className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg opacity-40 cursor-not-allowed w-full"
+                      style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}>
+                      ✏️ Bewerken
+                    </button>
+                    <button disabled className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg opacity-40 cursor-not-allowed w-full"
+                      style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}>
+                      🔍 Analyseer
+                    </button>
+                    <p className="text-xs text-center mt-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                      Voer eerst CV in
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
