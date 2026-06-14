@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import SectieReview from './SectieReview'
 import CVPreview from './CVPreview'
@@ -454,6 +454,7 @@ function Analyse() {
   const [fout, setFout] = useState(null)
   const [toonFavorieten, setToonFavorieten] = useState(false)
   const [toonVacatureFavorieten, setToonVacatureFavorieten] = useState(false)
+  const [toonVacatureInvoer, setToonVacatureInvoer] = useState(false)
   const fileInputRef = useRef(null)
   const navigate = useNavigate()
   const { branding } = useBranding()
@@ -535,52 +536,52 @@ function Analyse() {
     }
   }
 
-  const directBewerken = () => {
+  const directBewerken = async () => {
     if (!cvTekst) {
       setFout('Voer eerst je CV in.')
       return
     }
+    setLoading(true)
+    setFout(null)
+    try {
+      const token = await getToken()
+      const headers = { 'Content-Type': 'application/json' }
+      if (token) headers['Authorization'] = `Bearer ${token}`
 
-    // Detecteer secties client-side zonder API call
-    const bekendeSectieNamen = [
-      'PROFIEL', 'WERKERVARING', 'OPLEIDING', 'VAARDIGHEDEN', 'CERTIFICERINGEN',
-      'KERNCOMPETENTIES', 'TOOLS & TECHNOLOGIEËN', 'TOOLS EN TECHNOLOGIEËN',
-      'SKILLS', 'ERVARING', 'EDUCATIE', 'TRAINING', 'PROJECTEN', 'TALEN',
-      'INTERESSES', 'REFERENTIES', 'SAMENVATTING', 'OVER MIJ', 'NEVENACTIVITEITEN',
-      'VRIJWILLIGERSWERK', 'PUBLICATIES', 'AWARDS', 'HOBBY'
-    ]
+      // Stuur CV naar extract endpoint om secties te detecteren
+      const response = await fetch(`${BACKEND}/extract`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ cv_tekst: cvTekst })
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Er ging iets mis')
 
-    const regels = cvTekst.split('\n')
-    const secties = []
-    let huidigeSectie = null
-    let huidigeInhoud = []
-
-    for (const regel of regels) {
-      const r = regel.trim().toUpperCase()
-      const isSectieNaam = bekendeSectieNamen.some(naam =>
-        r === naam || r.startsWith(naam + ' ') || r.startsWith(naam + ':')
-      )
-      if (isSectieNaam && regel.trim().length > 0) {
-        if (huidigeSectie) {
-          secties.push({ naam: huidigeSectie, originele_tekst: huidigeInhoud.join('\n').trim() })
-        }
-        huidigeSectie = regel.trim()
-        huidigeInhoud = []
-      } else if (huidigeSectie) {
-        huidigeInhoud.push(regel)
+      // Maak minimale analyse zonder match score
+      const minimaleAnalyse = {
+        taal: 'nl',
+        match_score: null,
+        ontbrekende_keywords: [],
+        aanwezige_keywords: [],
+        tone_aanbeveling: '',
+        secties: data.secties || []
       }
-    }
-    if (huidigeSectie) {
-      secties.push({ naam: huidigeSectie, originele_tekst: huidigeInhoud.join('\n').trim() })
-    }
 
-    const definitieveSecties = secties.length > 0
-      ? secties
-      : [{ naam: 'CV', originele_tekst: cvTekst }]
-
-    navigate('/cv-preview', {
-      state: { secties: definitieveSecties, definitieveTeksten: {}, cvTekst, cvHtml }
-    })
+      navigate('/sectie-review', {
+        state: {
+          analyse: minimaleAnalyse,
+          cvTekst,
+          cvHtml,
+          vacatureTekst: vacatureTekst || '',
+          keywordContext: null,
+          geselecteerdeKeywords: [],
+          keywordSecties: {}
+        }
+      })
+    } catch (err) {
+      setFout(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const scoreKleur = (score) => {
@@ -595,19 +596,26 @@ function Analyse() {
     return 'border-red-500'
   }
 
+// NIEUWE RETURN voor het Analyse component
+// Vervangt alles vanaf "return (" tot en met de sluitende "}" van Analyse()
+
+  // ── Stap state ───────────────────────────────────────────────────────────
+  // stap: 'cv' | 'actie' | 'vacature' | 'laden' | 'resultaat'
+  const heeftCv = cvTekst.trim().length > 50
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: branding.achtergrondkleur }}>
       <Header />
       <OrganisatieSelector />
 
+      {/* Panels */}
       {toonFavorieten && (
         <FavorietenPanel
           cvTekst={cvTekst}
-          onSelecteer={(tekst) => setCvTekst(tekst)}
+          onSelecteer={(tekst) => { setCvTekst(tekst); setCvHtml(null) }}
           onSluiten={() => setToonFavorieten(false)}
         />
       )}
-
       {toonVacatureFavorieten && (
         <VacatureFavorietenPanel
           vacatureTekst={vacatureTekst}
@@ -616,233 +624,91 @@ function Analyse() {
         />
       )}
 
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
 
-        {!analyse && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-            {/* CV kolom */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium" style={{ color: labelKleur }}>
-                  Jouw CV
-                </label>
-                <div className="flex gap-2 flex-wrap justify-end">
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadLoading}
-                    className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
-                    style={{ borderColor: knopBorderKleur, color: knopTekstKleur, backgroundColor: 'transparent' }}
-                  >
-                    {uploadLoading ? 'Laden...' : '📎 Upload CV'}
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,.docx"
-                    className="hidden"
-                    onChange={(e) => e.target.files[0] && uploadCv(e.target.files[0])}
-                  />
-                  <button
-                    onClick={() => setToonFavorieten(true)}
-                    className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg transition-colors whitespace-nowrap"
-                    style={{
-                      borderColor: branding.primaire_kleur,
-                      color: isDonker(branding.achtergrondkleur) ? '#F9FAFB' : branding.primaire_kleur,
-                      backgroundColor: isDonker(branding.achtergrondkleur) ? `${branding.primaire_kleur}33` : 'transparent'
-                    }}
-                  >
-                    ⭐ Opgeslagen CV's
-                  </button>
-                </div>
-              </div>
-              <RichTextEditor
-                content={cvHtml || cvTekst}
-                onChange={(html, tekst) => {
-                  setCvHtml(html)
-                  setCvTekst(tekst)
-                  if (tekst.length > 100 && !toonOpslaanKnop) toonOpslaanMelding()
-                }}
-                placeholder="Plak hier je CV tekst, of upload een PDF/DOCX..."
-                minHeight={256}
-                donkerThema={isDonker(branding.achtergrondkleur)}
-              />
-              <div className="flex items-center justify-between mt-1">
-                <p className="text-xs" style={{ color: cvTekst.length > MAX_CV_TEKENS ? '#F87171' : subTekstKleur }}>
-                  {cvTekst.length} / {MAX_CV_TEKENS} tekens
-                </p>
-                {toonOpslaanKnop && cvTekst && (
-                  <button
-                    onClick={() => { setToonFavorieten(true); setToonOpslaanKnop(false) }}
-                    className={`text-xs px-3 py-1 rounded-lg font-medium transition-all ${knipperend ? 'animate-pulse' : ''}`}
-                    style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
-                  >
-                    ⭐ Opslaan als favoriet
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Vacature kolom */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium" style={{ color: labelKleur }}>
-                  Vacature
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setToonVacatureFavorieten(true)}
-                    className="flex items-center gap-1 px-3 py-1 text-xs border rounded-lg transition-colors whitespace-nowrap"
-                    style={{
-                      borderColor: branding.primaire_kleur,
-                      color: isDonker(branding.achtergrondkleur) ? '#F9FAFB' : branding.primaire_kleur,
-                      backgroundColor: isDonker(branding.achtergrondkleur) ? `${branding.primaire_kleur}33` : 'transparent'
-                    }}
-                  >
-                    ⭐ Opgeslagen vacatures
-                  </button>
-                </div>
-              </div>
-              <textarea
-                className="w-full h-64 p-3 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                style={{
-                  backgroundColor: isDonker(branding.achtergrondkleur) ? '#1F2937' : '#FFFFFF',
-                  color: isDonker(branding.achtergrondkleur) ? '#F9FAFB' : '#111827',
-                  borderColor: isDonker(branding.achtergrondkleur) ? '#374151' : '#D1D5DB'
-                }}
-                placeholder="Plak hier de vacaturetekst..."
-                value={vacatureTekst}
-                onChange={(e) => {
-                  setVacatureTekst(e.target.value)
-                  if (e.target.value.length > 100 && !toonVacatureOpslaanKnop) toonVacatureOpslaanMelding()
-                }}
-              />
-              <div className="flex items-center justify-between mt-1">
-                <p className="text-xs mt-1 text-right w-full" style={{ color: vacatureTekst.length > MAX_VACATURE_TEKENS ? '#F87171' : subTekstKleur }}>
-                  {vacatureTekst.length} / {MAX_VACATURE_TEKENS} tekens
-                </p>
-                {toonVacatureOpslaanKnop && vacatureTekst && (
-                  <button
-                    onClick={() => { setToonVacatureFavorieten(true); setToonVacatureOpslaanKnop(false) }}
-                    className={`text-xs px-3 py-1 rounded-lg font-medium transition-all whitespace-nowrap ${vacatureKnipperend ? 'animate-pulse' : ''}`}
-                    style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
-                  >
-                    ⭐ Opslaan als favoriet
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {!analyse && (
-          <div className="mt-6 flex flex-col items-center gap-3">
-            <button
-              onClick={analyseer}
-              disabled={loading || !cvTekst || !vacatureTekst || cvTekst.length > MAX_CV_TEKENS || vacatureTekst.length > MAX_VACATURE_TEKENS}
-              className="px-8 py-3 font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
-            >
-              {loading ? 'Analyseren...' : 'Vergelijk de CV met de vacature'}
-            </button>
-            <button
-              onClick={directBewerken}
-              disabled={loading || !cvTekst || cvTekst.length > MAX_CV_TEKENS}
-              className="px-6 py-2 text-sm border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              style={{ borderColor: knopBorderKleur, color: knopTekstKleur, backgroundColor: 'transparent' }}
-            >
-              {loading ? 'Laden...' : '✏️ Direct bewerken & downloaden'}
-            </button>
-          </div>
-        )}
-
-        {loading && (
-          <div className="mt-8 text-center">
-            <div
-              className="inline-block w-8 h-8 border-4 border-t-transparent rounded-full animate-spin"
-              style={{ borderColor: `${branding.primaire_kleur} transparent transparent transparent` }}
-            ></div>
-            <p className="mt-3 text-sm" style={{ color: subTekstKleur }}>Claude analyseert je CV...</p>
-          </div>
-        )}
-
-        {fout && (
-          <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-700 text-sm">{fout}</p>
-          </div>
-        )}
-
+        {/* ── Analyse resultaat ── */}
         {analyse && (
-          <div className="space-y-6">
-            <button onClick={() => setAnalyse(null)} className="text-sm hover:underline" style={{ color: branding.primaire_kleur }}>
+          <div className="space-y-5">
+            <button
+              onClick={() => { setAnalyse(null); setVacatureTekst('') }}
+              className="text-sm hover:underline flex items-center gap-1"
+              style={{ color: branding.primaire_kleur }}
+            >
               ← Nieuw CV analyseren
             </button>
 
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Match Score</h2>
+            {/* Match Score */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+              <h2 className="text-base font-semibold text-gray-800 mb-4">Match Score</h2>
               <div className="flex items-center gap-6">
-                <div className={`w-24 h-24 rounded-full border-8 ${scoreRingKleur(analyse.match_score)} flex items-center justify-center flex-shrink-0`}>
-                  <span className={`text-2xl font-bold ${scoreKleur(analyse.match_score)}`}>{analyse.match_score}%</span>
+                <div className={`w-20 h-20 rounded-full border-8 ${scoreRingKleur(analyse.match_score)} flex items-center justify-center flex-shrink-0`}>
+                  <span className={`text-xl font-bold ${scoreKleur(analyse.match_score)}`}>{analyse.match_score}%</span>
                 </div>
                 <p className="text-gray-600 text-sm flex-1">{analyse.match_toelichting}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-800 mb-3">Ontbrekende keywords</h2>
+            {/* Keywords */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                <h2 className="text-sm font-semibold text-gray-800 mb-3">Ontbrekende keywords</h2>
                 <div className="flex flex-wrap gap-2">
                   {analyse.ontbrekende_keywords.map((kw, i) => (
-                    <span key={i} className="px-3 py-1 bg-red-50 text-red-700 text-sm rounded-full border border-red-200">{kw}</span>
+                    <span key={i} className="px-3 py-1 bg-red-50 text-red-700 text-xs rounded-full border border-red-200">{kw}</span>
                   ))}
                 </div>
               </div>
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-800 mb-3">Aanwezige keywords</h2>
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                <h2 className="text-sm font-semibold text-gray-800 mb-3">Aanwezige keywords</h2>
                 <div className="flex flex-wrap gap-2">
                   {analyse.aanwezige_keywords.map((kw, i) => (
-                    <span key={i} className="px-3 py-1 bg-green-50 text-green-700 text-sm rounded-full border border-green-200">{kw}</span>
+                    <span key={i} className="px-3 py-1 bg-green-50 text-green-700 text-xs rounded-full border border-green-200">{kw}</span>
                   ))}
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">Tone of Voice</h2>
+            {/* Tone of Voice */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <h2 className="text-sm font-semibold text-gray-800 mb-4">Tone of Voice</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase mb-1">Vacature</p>
+                  <p className="text-xs font-medium text-gray-400 uppercase mb-1">Vacature</p>
                   <p className="text-sm text-gray-700">{analyse.tone_of_voice_vacature}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase mb-1">Jouw CV</p>
+                  <p className="text-xs font-medium text-gray-400 uppercase mb-1">Jouw CV</p>
                   <p className="text-sm text-gray-700">{analyse.tone_of_voice_cv}</p>
                 </div>
               </div>
-              <div className="rounded-lg p-4" style={{ backgroundColor: `${branding.primaire_kleur}15` }}>
+              <div className="rounded-xl p-4" style={{ backgroundColor: `${branding.primaire_kleur}15` }}>
                 <p className="text-xs font-medium uppercase mb-1" style={{ color: branding.primaire_kleur }}>Aanbeveling</p>
                 <p className="text-sm text-gray-800">{analyse.tone_aanbeveling}</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">CV Secties</h2>
-              <div className="space-y-3">
+            {/* CV Secties */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <h2 className="text-sm font-semibold text-gray-800 mb-3">CV Secties</h2>
+              <div className="space-y-2">
                 {analyse.secties.map((sectie, i) => (
-                  <div key={i} className="border border-gray-100 rounded-lg p-4">
+                  <div key={i} className="border border-gray-100 rounded-xl p-3">
                     <p className="text-sm font-medium text-gray-700">{sectie.naam}</p>
-                    <p className="text-xs text-gray-400 mt-1 font-mono">{(sectie.originele_tekst || sectie.opmerking || '').substring(0, 100)}...</p>
+                    <p className="text-xs text-gray-400 mt-0.5 font-mono truncate">
+                      {(sectie.originele_tekst || sectie.opmerking || '').substring(0, 100)}...
+                    </p>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="rounded-xl border p-6 text-center" style={{ backgroundColor: `${branding.primaire_kleur}10`, borderColor: `${branding.primaire_kleur}40` }}>
-              <h2 className="text-lg font-semibold text-gray-800 mb-2">Klaar om je CV te verbeteren?</h2>
-              <p className="text-sm text-gray-600 mb-4">Ga sectie voor sectie door je CV en laat Claude concrete verbeteringsvoorstellen genereren.</p>
+            {/* CTA */}
+            <div className="rounded-2xl border p-6 text-center" style={{ backgroundColor: `${branding.primaire_kleur}10`, borderColor: `${branding.primaire_kleur}30` }}>
+              <h2 className="text-base font-semibold text-gray-800 mb-1">Klaar om je CV te verbeteren?</h2>
+              <p className="text-sm text-gray-500 mb-4">Ga sectie voor sectie door je CV met concrete verbeteringsvoorstellen.</p>
               <button
                 onClick={() => navigate('/keyword-feedback', { state: { analyse, cvTekst, cvHtml, vacatureTekst } })}
-                className="px-8 py-3 font-medium rounded-lg transition-colors"
+                className="px-8 py-3 font-medium rounded-xl transition-colors"
                 style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
               >
                 Verbeter mijn CV per sectie →
@@ -850,17 +716,185 @@ function Analyse() {
             </div>
           </div>
         )}
-      </div>
 
-      {/* Footer afbeelding */}
-      {branding.footer_url && (
-        <div className="w-full mt-8">
-          <img src={branding.footer_url} alt="Footer" className="w-full object-cover max-h-48" />
-        </div>
-      )}
+        {/* ── Hoofdflow (geen analyse resultaat) ── */}
+        {!analyse && (
+          <>
+            {/* ── Stap 1: CV invoer ── */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                    style={{ backgroundColor: branding.primaire_kleur }}>1</div>
+                  <h2 className="text-sm font-semibold text-gray-800">Jouw CV</h2>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadLoading}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-lg transition-colors disabled:opacity-50"
+                    style={{ borderColor: '#D1D5DB', color: '#4B5563' }}
+                  >
+                    {uploadLoading ? '⏳ Laden...' : '📎 Upload PDF/DOCX'}
+                  </button>
+                  <input ref={fileInputRef} type="file" accept=".pdf,.docx" className="hidden"
+                    onChange={(e) => e.target.files[0] && uploadCv(e.target.files[0])} />
+                  <button
+                    onClick={() => setToonFavorieten(true)}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-lg transition-colors"
+                    style={{ borderColor: branding.primaire_kleur, color: branding.primaire_kleur }}
+                  >
+                    ⭐ Opgeslagen CV's
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-4">
+                <RichTextEditor
+                  content={cvHtml || cvTekst}
+                  onChange={(html, tekst) => {
+                    setCvHtml(html)
+                    setCvTekst(tekst)
+                    if (tekst.length > 100 && !toonOpslaanKnop) toonOpslaanMelding()
+                  }}
+                  placeholder="Plak hier je CV tekst, of upload een PDF/DOCX..."
+                  minHeight={300}
+                />
+                <div className="flex items-center justify-between mt-2">
+                  <p className="text-xs" style={{ color: cvTekst.length > MAX_CV_TEKENS ? '#F87171' : '#9CA3AF' }}>
+                    {cvTekst.length} / {MAX_CV_TEKENS} tekens
+                  </p>
+                  {toonOpslaanKnop && cvTekst && (
+                    <button
+                      onClick={() => { setToonFavorieten(true); setToonOpslaanKnop(false) }}
+                      className={`text-xs px-3 py-1 rounded-lg font-medium transition-all ${knipperend ? 'animate-pulse' : ''}`}
+                      style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
+                    >
+                      ⭐ Opslaan als favoriet
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Stap 2: Kies actie (verschijnt na CV invoer) ── */}
+            {heeftCv && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                    style={{ backgroundColor: branding.primaire_kleur }}>2</div>
+                  <h2 className="text-sm font-semibold text-gray-800">Wat wil je doen?</h2>
+                </div>
+                <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+
+                  {/* Optie A: Direct bewerken */}
+                  <button
+                    onClick={directBewerken}
+                    className="flex flex-col items-start gap-1 p-4 border-2 rounded-xl text-left transition-all hover:border-blue-400 hover:bg-blue-50"
+                    style={{ borderColor: '#E5E7EB' }}
+                  >
+                    <span className="text-lg">✏️</span>
+                    <span className="text-sm font-semibold text-gray-800">Direct bewerken & downloaden</span>
+                    <span className="text-xs text-gray-400">CV opmaken en exporteren als Word of PDF, zonder analyse</span>
+                  </button>
+
+                  {/* Optie B: Analyseer */}
+                  <button
+                    onClick={() => setToonVacatureInvoer(prev => !prev)}
+                    className="flex flex-col items-start gap-1 p-4 border-2 rounded-xl text-left transition-all hover:border-blue-400 hover:bg-blue-50"
+                    style={{ borderColor: toonVacatureInvoer ? branding.primaire_kleur : '#E5E7EB',
+                             backgroundColor: toonVacatureInvoer ? `${branding.primaire_kleur}08` : 'transparent' }}
+                  >
+                    <span className="text-lg">🔍</span>
+                    <span className="text-sm font-semibold text-gray-800">Analyseer met vacature</span>
+                    <span className="text-xs text-gray-400">Match score, ontbrekende keywords en sectie-voor-sectie verbetering</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── Stap 3: Vacature invoer (klapt uit na keuze analyseer) ── */}
+            {heeftCv && toonVacatureInvoer && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                      style={{ backgroundColor: branding.primaire_kleur }}>3</div>
+                    <h2 className="text-sm font-semibold text-gray-800">Vacature</h2>
+                  </div>
+                  <button
+                    onClick={() => setToonVacatureFavorieten(true)}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs border rounded-lg transition-colors"
+                    style={{ borderColor: branding.primaire_kleur, color: branding.primaire_kleur }}
+                  >
+                    ⭐ Opgeslagen vacatures
+                  </button>
+                </div>
+
+                <div className="p-4">
+                  <textarea
+                    className="w-full h-48 p-3 border rounded-xl text-sm focus:outline-none focus:ring-2 resize-none"
+                    style={{ borderColor: '#E5E7EB', color: '#111827', backgroundColor: '#FAFAFA' }}
+                    placeholder="Plak hier de vacaturetekst..."
+                    value={vacatureTekst}
+                    onChange={(e) => {
+                      setVacatureTekst(e.target.value)
+                      if (e.target.value.length > 100 && !toonVacatureOpslaanKnop) toonVacatureOpslaanMelding()
+                    }}
+                  />
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-xs" style={{ color: vacatureTekst.length > MAX_VACATURE_TEKENS ? '#F87171' : '#9CA3AF' }}>
+                      {vacatureTekst.length} / {MAX_VACATURE_TEKENS} tekens
+                    </p>
+                    {toonVacatureOpslaanKnop && vacatureTekst && (
+                      <button
+                        onClick={() => { setToonVacatureFavorieten(true); setToonVacatureOpslaanKnop(false) }}
+                        className={`text-xs px-3 py-1 rounded-lg font-medium transition-all whitespace-nowrap ${vacatureKnipperend ? 'animate-pulse' : ''}`}
+                        style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
+                      >
+                        ⭐ Opslaan als favoriet
+                      </button>
+                    )}
+                  </div>
+
+                  {fout && (
+                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl">
+                      <p className="text-red-700 text-sm">{fout}</p>
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      onClick={analyseer}
+                      disabled={loading || !vacatureTekst || vacatureTekst.length > MAX_VACATURE_TEKENS || cvTekst.length > MAX_CV_TEKENS}
+                      className="px-6 py-2.5 font-medium rounded-xl text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                      style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
+                    >
+                      {loading ? (
+                        <>
+                          <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Analyseren...
+                        </>
+                      ) : 'Analyseer CV →'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Fout buiten vacature blok */}
+            {fout && !toonVacatureInvoer && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-red-700 text-sm">{fout}</p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }
+
 
 function AppInhoud() {
   const { gebruiker, loading, companyId, isAdmin } = useAuth()
@@ -912,4 +946,3 @@ function App() {
 }
 
 export default App
-
