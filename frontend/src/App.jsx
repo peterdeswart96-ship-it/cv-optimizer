@@ -535,50 +535,52 @@ function Analyse() {
     }
   }
 
-  const directBewerken = async () => {
+  directBewerken = () => {
     if (!cvTekst) {
       setFout('Voer eerst je CV in.')
       return
     }
-    setLoading(true)
-    setFout(null)
-    try {
-      const token = await getToken()
-      const headers = { 'Content-Type': 'application/json' }
-      if (token) headers['Authorization'] = `Bearer ${token}`
 
-      // Stuur CV naar extract endpoint om secties te detecteren
-      const response = await fetch(`${BACKEND}/extract`, {
-        method: 'POST', headers,
-        body: JSON.stringify({ cv_tekst: cvTekst })
-      })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Er ging iets mis')
+    // Detecteer secties client-side zonder API call
+    const bekendeSectieNamen = [
+      'PROFIEL', 'WERKERVARING', 'OPLEIDING', 'VAARDIGHEDEN', 'CERTIFICERINGEN',
+      'KERNCOMPETENTIES', 'TOOLS & TECHNOLOGIEËN', 'TOOLS EN TECHNOLOGIEËN',
+      'SKILLS', 'ERVARING', 'EDUCATIE', 'TRAINING', 'PROJECTEN', 'TALEN',
+      'INTERESSES', 'REFERENTIES', 'SAMENVATTING', 'OVER MIJ', 'NEVENACTIVITEITEN',
+      'VRIJWILLIGERSWERK', 'PUBLICATIES', 'AWARDS', 'HOBBY'
+    ]
 
-      // Maak minimale analyse zonder match score
-      const minimaleAnalyse = {
-        taal: 'nl',
-        match_score: null,
-        ontbrekende_keywords: [],
-        aanwezige_keywords: [],
-        tone_aanbeveling: '',
-        secties: data.secties || []
-      }
+    const regels = cvTekst.split('\n')
+    const secties = []
+    let huidigeSectie = null
+    let huidigeInhoud = []
 
-      // Direct naar CV Preview — geen sectie-review tussenstap
-      navigate('/cv-preview', {
-        state: {
-          secties: data.secties || [],
-          definitieveTeksten: {},
-          cvTekst,
-          cvHtml
+    for (const regel of regels) {
+      const r = regel.trim().toUpperCase()
+      const isSectieNaam = bekendeSectieNamen.some(naam =>
+        r === naam || r.startsWith(naam + ' ') || r.startsWith(naam + ':')
+      )
+      if (isSectieNaam && regel.trim().length > 0) {
+        if (huidigeSectie) {
+          secties.push({ naam: huidigeSectie, originele_tekst: huidigeInhoud.join('\n').trim() })
         }
-      })
-    } catch (err) {
-      setFout(err.message)
-    } finally {
-      setLoading(false)
+        huidigeSectie = regel.trim()
+        huidigeInhoud = []
+      } else if (huidigeSectie) {
+        huidigeInhoud.push(regel)
+      }
     }
+    if (huidigeSectie) {
+      secties.push({ naam: huidigeSectie, originele_tekst: huidigeInhoud.join('\n').trim() })
+    }
+
+    const definitieveSecties = secties.length > 0
+      ? secties
+      : [{ naam: 'CV', originele_tekst: cvTekst }]
+
+    navigate('/cv-preview', {
+      state: { secties: definitieveSecties, definitieveTeksten: {}, cvTekst, cvHtml }
+    })
   }
 
   const scoreKleur = (score) => {
