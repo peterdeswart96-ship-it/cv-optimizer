@@ -565,15 +565,13 @@ function Analyse() {
         secties: data.secties || []
       }
 
-      navigate('/sectie-review', {
+      // Direct naar CV Preview — geen sectie-review tussenstap
+      navigate('/cv-preview', {
         state: {
-          analyse: minimaleAnalyse,
+          secties: data.secties || [],
+          definitieveTeksten: {},
           cvTekst,
-          cvHtml,
-          vacatureTekst: vacatureTekst || '',
-          keywordContext: null,
-          geselecteerdeKeywords: [],
-          keywordSecties: {}
+          cvHtml
         }
       })
     } catch (err) {
@@ -744,6 +742,14 @@ function Analyse() {
               style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
             >
               {loading ? 'Analyseren...' : 'Vergelijk de CV met de vacature'}
+            </button>
+            <button
+              onClick={directBewerken}
+              disabled={loading || !cvTekst || cvTekst.length > MAX_CV_TEKENS}
+              className="px-6 py-2 text-sm border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              style={{ borderColor: knopBorderKleur, color: knopTekstKleur, backgroundColor: 'transparent' }}
+            >
+              {loading ? 'Laden...' : '✏️ Direct bewerken & downloaden'}
             </button>
           </div>
         )}
