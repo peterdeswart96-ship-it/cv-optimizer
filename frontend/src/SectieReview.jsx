@@ -1,8 +1,17 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
+import { useBranding } from './BrandingContext'
 import { maakBlokken, renderBlokken } from './cvUtils.jsx'
 import RichTextEditor from './RichTextEditor'
+
+function isDonker(hex) {
+  if (!hex || !hex.startsWith('#') || hex.length < 7) return false
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return (r * 299 + g * 587 + b * 114) / 1000 < 150
+}
 
 const BACKEND = 'https://func-cv-optimizer-linux.azurewebsites.net/api'
 
@@ -94,11 +103,52 @@ function LayoutFeedbackBadge({ items }) {
   )
 }
 
+// ─── Branding Header (zelfde structuur als App.jsx) ──────────────────────────
+function BrandingHeader({ gebruiker, uitloggen, branding }) {
+  const primaireTekstKleur = isDonker(branding.primaire_kleur) ? '#FFFFFF' : '#111827'
+  return (
+    <div
+      className="border-b px-6 py-4 flex items-center justify-between"
+      style={{ backgroundColor: branding.primaire_kleur }}
+    >
+      <div className="flex items-center gap-4">
+        {branding.logo_url && (
+          <img
+            src={branding.logo_url}
+            alt={branding.bedrijfsnaam}
+            className="h-10 object-contain"
+            onError={(e) => { e.target.style.display = 'none' }}
+          />
+        )}
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: primaireTekstKleur }}>{branding.bedrijfsnaam}</h1>
+          <p className="text-sm opacity-80 mt-0.5" style={{ color: primaireTekstKleur }}>{branding.welkomsttekst}</p>
+        </div>
+      </div>
+      {gebruiker && (
+        <div className="flex items-center gap-3">
+          <span className="text-sm opacity-80" style={{ color: primaireTekstKleur }}>
+            {gebruiker.name || gebruiker.username}
+          </span>
+          <button
+            onClick={uitloggen}
+            className="px-3 py-1.5 text-sm rounded-lg transition-colors"
+            style={{ backgroundColor: 'rgba(255,255,255,0.18)', color: primaireTekstKleur }}
+          >
+            Uitloggen
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Hoofd component ─────────────────────────────────────────────────────────
 function SectieReview() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { getToken } = useAuth()
+  const { getToken, gebruiker, uitloggen } = useAuth()
+  const { branding } = useBranding()
   const {
     analyse,
     cvTekst,
@@ -286,7 +336,8 @@ function SectieReview() {
           <div className="flex gap-4 justify-center">
             <button
               onClick={() => navigate('/')}
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="px-6 py-3 border rounded-lg transition-colors hover:opacity-80 text-sm"
+              style={{ borderColor: '#D1D5DB', color: '#374151', backgroundColor: 'white' }}
             >
               ← Nieuwe analyse
             </button>
@@ -294,7 +345,8 @@ function SectieReview() {
               onClick={() => navigate('/cv-preview', {
                 state: { secties, definitieveTeksten, cvTekst, cvHtml }
               })}
-              className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-6 py-3 font-medium rounded-lg transition-colors hover:opacity-90 text-sm"
+              style={{ backgroundColor: branding.primaire_kleur, color: isDonker(branding.primaire_kleur) ? '#FFFFFF' : '#111827' }}
             >
               Bekijk en download CV →
             </button>
@@ -310,44 +362,102 @@ function SectieReview() {
     return geselecteerdeKeywords.filter(kw => keywordSecties[kw] === huidigeSectie.naam)
   })()
 
+  const primaireTekstKleur = isDonker(branding.primaire_kleur) ? '#FFFFFF' : '#111827'
+
   // ── Hoofd render ───────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ backgroundColor: branding.achtergrondkleur || '#F3F4F6' }}>
 
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="flex items-center justify-between max-w-3xl mx-auto">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">CV Sectie Review</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Sectie {huidigeSectieIndex + 1} van {totaalSecties}
-            </p>
-          </div>
-          <button onClick={() => navigate('/')} className="text-sm text-blue-600 hover:underline">
-            ← Terug naar analyse
+      {/* Branding Header */}
+      <BrandingHeader gebruiker={gebruiker} uitloggen={uitloggen} branding={branding} />
+
+      {/* Nav-balk: navigatie + voortgang + acties */}
+      <div className="border-b px-6" style={{ backgroundColor: 'white', borderColor: '#E5E7EB' }}>
+        <div className="max-w-3xl mx-auto flex items-center gap-3 py-2.5">
+
+          {/* Links: terug */}
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors hover:opacity-80 flex-shrink-0"
+            style={{ borderColor: '#D1D5DB', color: '#374151', backgroundColor: 'white' }}
+          >
+            ← Terug
           </button>
+
+          {/* Midden: voortgangs-dots */}
+          <div className="flex items-center gap-1.5 flex-1 justify-center">
+            {secties.map((sectie, i) => (
+              <div
+                key={i}
+                title={sectie.naam}
+                className="flex items-center justify-center rounded-full text-xs font-medium transition-all flex-shrink-0 cursor-default"
+                style={{
+                  width: i === huidigeSectieIndex ? '28px' : '22px',
+                  height: i === huidigeSectieIndex ? '28px' : '22px',
+                  backgroundColor: i < huidigeSectieIndex
+                    ? '#22c55e'
+                    : i === huidigeSectieIndex
+                      ? branding.primaire_kleur
+                      : 'white',
+                  border: i === huidigeSectieIndex
+                    ? `2px solid ${branding.primaire_kleur}`
+                    : i < huidigeSectieIndex
+                      ? '2px solid #22c55e'
+                      : '1.5px solid #D1D5DB',
+                  color: i <= huidigeSectieIndex ? 'white' : '#9CA3AF',
+                  fontSize: '10px'
+                }}
+              >
+                {i < huidigeSectieIndex ? '✓' : i + 1}
+              </div>
+            ))}
+            <span className="text-xs ml-1 flex-shrink-0 text-gray-400">
+              {huidigeSectieIndex + 1} / {totaalSecties}
+            </span>
+          </div>
+
+          {/* Rechts: actieknoppen */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {!sectieAnalyse && !loading && (
+              <>
+                <button
+                  onClick={() => slaOpEnVerder(huidigeSectie.originele_tekst)}
+                  className="px-3 py-1.5 text-sm rounded-lg border transition-colors hover:opacity-80"
+                  style={{ borderColor: '#D1D5DB', color: '#6B7280', backgroundColor: 'white' }}
+                >
+                  Overslaan
+                </button>
+                <button
+                  onClick={analyseerSectie}
+                  className="px-4 py-1.5 text-sm font-medium rounded-lg transition-colors hover:opacity-90"
+                  style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
+                >
+                  Analyseer sectie
+                </button>
+              </>
+            )}
+            {sectieAnalyse && !loading && aangepasteTekst && (
+              <button
+                onClick={() => slaOpEnVerder(aangepasteTekst)}
+                className="px-4 py-1.5 text-sm font-medium rounded-lg transition-colors hover:opacity-90"
+                style={{ backgroundColor: '#16a34a', color: 'white' }}
+              >
+                {isLaatsteSectie ? 'Afronden ✓' : 'Opslaan & volgende →'}
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Voortgangsbalk */}
-        <div className="max-w-3xl mx-auto mt-3">
-          <div className="w-full bg-gray-200 rounded-full h-2">
+        {/* Voortgangslijn */}
+        <div className="max-w-3xl mx-auto">
+          <div className="h-0.5 rounded-full" style={{ backgroundColor: '#E5E7EB' }}>
             <div
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${((huidigeSectieIndex) / totaalSecties) * 100}%` }}
+              className="h-0.5 rounded-full transition-all duration-300"
+              style={{
+                width: `${((huidigeSectieIndex) / totaalSecties) * 100}%`,
+                backgroundColor: branding.primaire_kleur
+              }}
             />
-          </div>
-          <div className="flex justify-between mt-1">
-            {secties.map((sectie, i) => (
-              <span key={i} className={`text-xs ${
-                i === huidigeSectieIndex
-                  ? 'text-blue-600 font-medium'
-                  : i < huidigeSectieIndex
-                    ? 'text-green-600'
-                    : 'text-gray-400'
-              }`}>
-                {i < huidigeSectieIndex ? '✓' : i === huidigeSectieIndex ? '◉' : '○'}
-              </span>
-            ))}
           </div>
         </div>
       </div>
@@ -380,21 +490,10 @@ function SectieReview() {
           </div>
         )}
 
-        {/* Analyseer + overslaan knoppen */}
+        {/* Analyseer hint (knoppen zitten in nav-balk) */}
         {!sectieAnalyse && !loading && (
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => slaOpEnVerder(huidigeSectie.originele_tekst)}
-              className="px-6 py-3 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors text-sm"
-            >
-              Sla sectie over →
-            </button>
-            <button
-              onClick={analyseerSectie}
-              className="px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Analyseer deze sectie
-            </button>
+          <div className="text-center py-2">
+            <p className="text-xs text-gray-400">Gebruik de knoppen boven om deze sectie te analyseren of over te slaan</p>
           </div>
         )}
 

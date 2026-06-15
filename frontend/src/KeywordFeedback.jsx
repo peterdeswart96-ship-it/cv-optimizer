@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useBranding } from './BrandingContext'
+import { useAuth } from './AuthContext'
 
 function isDonker(hex) {
   if (!hex || !hex.startsWith('#') || hex.length < 7) return false
@@ -10,10 +11,51 @@ function isDonker(hex) {
   return (r * 299 + g * 587 + b * 114) / 1000 < 150
 }
 
+// ─── Branding Header ──────────────────────────────────────────────────────────
+function BrandingHeader({ gebruiker, uitloggen, branding }) {
+  const primaireTekstKleur = isDonker(branding.primaire_kleur) ? '#FFFFFF' : '#111827'
+  return (
+    <div
+      className="border-b px-6 py-4 flex items-center justify-between"
+      style={{ backgroundColor: branding.primaire_kleur }}
+    >
+      <div className="flex items-center gap-4">
+        {branding.logo_url && (
+          <img
+            src={branding.logo_url}
+            alt={branding.bedrijfsnaam}
+            className="h-10 object-contain"
+            onError={(e) => { e.target.style.display = 'none' }}
+          />
+        )}
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: primaireTekstKleur }}>{branding.bedrijfsnaam}</h1>
+          <p className="text-sm opacity-80 mt-0.5" style={{ color: primaireTekstKleur }}>{branding.welkomsttekst}</p>
+        </div>
+      </div>
+      {gebruiker && (
+        <div className="flex items-center gap-3">
+          <span className="text-sm opacity-80" style={{ color: primaireTekstKleur }}>
+            {gebruiker.name || gebruiker.username}
+          </span>
+          <button
+            onClick={uitloggen}
+            className="px-3 py-1.5 text-sm rounded-lg transition-colors"
+            style={{ backgroundColor: 'rgba(255,255,255,0.18)', color: primaireTekstKleur }}
+          >
+            Uitloggen
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function KeywordFeedback() {
   const location = useLocation()
   const navigate = useNavigate()
   const { branding } = useBranding()
+  const { gebruiker, uitloggen } = useAuth()
   const { analyse, cvTekst, cvHtml, vacatureTekst } = location.state || {}
 
   const [geselecteerdeKeywords, setGeselecteerdeKeywords] = useState([])
@@ -21,7 +63,7 @@ function KeywordFeedback() {
   const [keywordSecties, setKeywordSecties] = useState({})
 
   const primaireTekstKleur = isDonker(branding.primaire_kleur) ? '#FFFFFF' : '#111827'
-  const achtergrondKleur = branding.achtergrondkleur || '#080F1E'
+  const achtergrondKleur = branding.achtergrondkleur || '#F3F4F6'
   const isAchtergrondDonker = isDonker(achtergrondKleur)
 
   if (!analyse) {
@@ -90,23 +132,33 @@ function KeywordFeedback() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: achtergrondKleur }}>
 
-      {/* Header — zelfde stijl als hoofdscherm */}
-      <div style={{ backgroundColor: branding.primaire_kleur }}>
-        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-base font-bold" style={{ color: primaireTekstKleur }}>
-              Keywords controleren
-            </h1>
-            <p className="text-xs mt-0.5" style={{ color: `${primaireTekstKleur}99` }}>
-              Stap 1 van 2
-            </p>
-          </div>
+      {/* Branding Header */}
+      <BrandingHeader gebruiker={gebruiker} uitloggen={uitloggen} branding={branding} />
+
+      {/* Nav-balk */}
+      <div className="border-b px-6" style={{ backgroundColor: 'white', borderColor: '#E5E7EB' }}>
+        <div className="max-w-3xl mx-auto flex items-center gap-3 py-2.5">
           <button
             onClick={() => navigate(-1)}
-            className="text-xs hover:underline"
-            style={{ color: `${primaireTekstKleur}CC` }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors hover:opacity-80 flex-shrink-0"
+            style={{ borderColor: '#D1D5DB', color: '#374151', backgroundColor: 'white' }}
           >
-            ← Terug naar analyse
+            ← Terug
+          </button>
+          <div className="flex-1 text-center">
+            <span className="text-sm font-medium text-gray-600">Keywords controleren</span>
+            <span className="text-xs text-gray-400 ml-2">· Stap 1 van 2</span>
+          </div>
+          <button
+            onClick={gaVerder}
+            disabled={!kanVerder}
+            className="px-4 py-1.5 text-sm font-medium rounded-lg transition-colors hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+            style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
+          >
+            {geselecteerdeKeywords.length > 0
+              ? `${geselecteerdeKeywords.length} keyword${geselecteerdeKeywords.length > 1 ? 's' : ''} toevoegen →`
+              : 'Doorgaan →'
+            }
           </button>
         </div>
       </div>
@@ -254,33 +306,9 @@ function KeywordFeedback() {
           </div>
         )}
 
-        {/* Knoppen */}
-        <div className="flex gap-3 justify-between pt-2">
-          <button
-            onClick={() => navigate('/sectie-review', {
-              state: { analyse, cvTekst, cvHtml, vacatureTekst, keywordContext: '', geselecteerdeKeywords: [], keywordSecties: {} }
-            })}
-            className="px-5 py-2.5 rounded-xl text-sm border transition-colors hover:opacity-80"
-            style={{ borderColor: `${primaireTekstKleur}30`, color: isAchtergrondDonker ? '#9CA3AF' : '#6B7280', backgroundColor: 'transparent' }}
-          >
-            Overslaan
-          </button>
-
-          <button
-            onClick={gaVerder}
-            disabled={!kanVerder}
-            className="px-8 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-all hover:opacity-90"
-            style={{ backgroundColor: branding.primaire_kleur, color: primaireTekstKleur }}
-          >
-            {geselecteerdeKeywords.length > 0
-              ? `${geselecteerdeKeywords.length} keyword${geselecteerdeKeywords.length > 1 ? 's' : ''} toevoegen & doorgaan →`
-              : 'Doorgaan zonder keywords →'
-            }
-          </button>
-        </div>
-
+        {/* Validatie hint */}
         {!kanVerder && (
-          <p className="text-xs text-center text-amber-500">
+          <p className="text-xs text-center text-amber-500 pb-2">
             Vul voor elk geselecteerd keyword een toelichting in om door te gaan
           </p>
         )}
